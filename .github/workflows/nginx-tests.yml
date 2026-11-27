@@ -4,46 +4,29 @@ name: nginx-tests
 # built with ngx_mruby, as test.sh builds it, and against nginx of the same
 # version and configure options without ngx_mruby ("nginx-tests" in
 # docs/test/README.md). The job records the results in its summary and in
-# the artifact nginx-tests; it fails only when a build, the fetch of the
-# suite or prove itself fails, not on the result of a test file. The
-# required check ci-ok (test.yml) does not need it: Pillar E of
-# docs/proposals/v3-plan.md records it first and makes it required once its
-# results are stable.
+# the artifact nginx-tests. It fails when a test file fails on nginx with
+# ngx_mruby and not on nginx without it, and when a build, the fetch of the
+# suite or prove itself fails; a file that fails on both builds does not
+# fail it. The required check ci-ok (test.yml) does not need it.
 #
-# Ready pull requests to next run it when they change an input of the nginx
-# binary (the paths below), test.sh,
-# the runner in test/nginx-tests/ or this file; a draft runs nothing, and
-# marking it ready for review starts the run. Pushes to next do not run it:
-# the run of the pull request on its merge commit is the record of the
-# merge, and "Run workflow" runs it on the tip of a branch.
+# Pull requests do not run it. The author of a change of an input of the
+# nginx binary (test/ci/changes.sh gives code true), of test.sh or of
+# test/nginx-tests/ runs test/nginx-tests/run.sh locally, in a Linux
+# container on macOS, before marking the pull request ready, and quotes
+# the result under "How was this tested" ("Build and test" in AGENTS.md).
+# This workflow is the nightly run of the tip of next, and runs only on
+# "Run workflow" (gh workflow run nginx-tests.yml --ref next): GitHub runs
+# a schedule only from the workflow files on the default branch, master,
+# which does not have this file, so a workflow on master starts the
+# nightly run on next, as valgrind-nightly.yml on master starts the
+# nightly runs of test.yml.
 on:
-  pull_request:
-    # GitHub's defaults (opened, synchronize, reopened) and the move of a
-    # draft to ready for review: a draft runs nothing (the job's if).
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - next
-    paths:
-      - 'src/**'
-      - 'mrbgems/**'
-      - 'mruby/**'
-      - 'dependence/**'
-      - 'build_config.rb'
-      - 'build_config.rb.lock'
-      - 'configure'
-      - 'config.in'
-      - 'Makefile.in'
-      - 'build.sh'
-      - 'nginx_version'
-      - 'test.sh'
-      - 'test/nginx-tests/**'
-      - '.github/workflows/nginx-tests.yml'
   workflow_dispatch:
 
-# A new push to a pull request cancels the run for its previous commit.
+# One run at a time per branch; a second one waits.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -54,7 +37,6 @@ defaults:
 
 jobs:
   nginx-tests:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     steps:

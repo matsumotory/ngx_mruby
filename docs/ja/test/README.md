@@ -95,8 +95,8 @@ readyのPRは必要なジョブだけを実行し、全体を約15分で終え�
 
 | 分類 | パス | readyのPRが実行するワークフロー |
 |---|---|---|
-| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`nginx-tests`、`examples`、`codeql`は、それぞれのパスフィルタに従って動く |
-| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較 |
+| `code` | `src/`、`mrbgems/`、`mruby/`、`dependence/`、`build_config.rb`、`build_config.rb.lock`、`configure`、`configure.in`、`config.in`、`Makefile.in`、`build.sh`、`nginx_version`、他の分類にない全パス | `test.yml`の`build`マトリクスのうち下の表の標準の4セル、`soak`、`perf`。`examples`と`codeql`は、それぞれのパスフィルタに従って動く。`nginx-tests`は作者が手元で流す |
+| `tests` | `test/`、`test.sh`、`.github/workflows/test.yml` | `test.yml`の標準の4セル。`soak`が真ならソーク、`perf`が真なら比較。`test.sh`か`test/nginx-tests/`を変えたときは、作者が手元でnginx-testsも流す |
 | `docs` | `docs/`、トップレベルにあるMarkdownのファイル、`AUTHORS`、`LEGAL`、`LICENSE`、`MITL` | ジョブなし。手元で検査：[サイトのCI](#サイトのci)（`next`）、[2.xページの検査](#サイトの2xページ)（`master`） |
 | `site` | `.github/workflows/site.yml`と`site/` | ジョブなし。`docs`と同じ |
 | `examples` | `examples/` | examples。サイトは`docs`と同じ扱い |
@@ -149,7 +149,7 @@ $ gh workflow run test.yml --ref claude/topic -f base=next
 
 この実行のジョブ名は`ci-ok (dry run)`で、`ci-ok`ではありません。`base`は実行する人が選ぶので、その結果は、ルールセットがコミットに求めるチェックにならないからです。同じように、`valgrind`入力のある実行のジョブ名は`ci-ok (valgrind)`です。この実行は始まった時点のブランチの先頭をビルドするので、キャンセルされると、そのコミットに失敗した`ci-ok`が残るからです。そのほかの「Run workflow」のジョブ名は`ci-ok (manual)`です。この実行はPRのマージコミットでなくブランチのheadを検査します。そのため、headに`ci-ok`として付くと、PR自身の実行が成功する前に、PRの必須チェックを満たしてしまいます。`valgrind-nightly.yml`は、ジョブの名前でなく、実行の結果を読みます。
 
-`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。baseがその後に進んだときは、PRとbaseの新しいコミットの両方が`code`か`tests`を変えたときだけ、CIを流し直します。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`nginx-tests`、`examples`、`zizmor`は、PRのときにだけ動きます。
+`master`と`next`へのpushでは、`changes`、`files`、`ci-ok`だけが動きます。どちらのブランチも、PRを通してだけ変更を受け付けます。[AGENTS.md](../../../AGENTS.md)の「Review and merge」の条件2により、セッションがPRをマージできるのは、PRの実行がまだそのマージに当てはまる間だけです。baseがその後に進んだときは、PRとbaseの新しいコミットの両方が`code`か`tests`を変えたときだけ、CIを流し直します。ルールセットは`ci-ok`を求めますが、ブランチがbaseに追いついていることは求めません。ブランチの先頭を単独でビルドしてテストするには、`gh workflow run test.yml --ref next`のように「Run workflow」を使います。夜間のvalgrindの実行もこの形の実行で、`master`の`valgrind-nightly.yml`のスケジュールが、`master`と`next`で起動します。説明は[CIのvalgrind](#ciのvalgrind)にあります。ほかのワークフローは、それぞれの条件で動きます。`site`は`next`へのすべてのpushでデプロイします。`codeql`は、`src/`、`mrbgems/`、ワークフロー、CodeQLの設定を変える`master`と`next`へのpushを検査します。説明は[CodeQL](#codeql)にあります。`examples`と`zizmor`はPRのときにだけ動き、`nginx-tests`は「Run workflow」のときにだけ動きます。説明は[CIで実行するnginx-tests](#ciで実行するnginx-tests)にあります。
 
 `build`、`soak`、`perf`、`files`がスキップされたとき、`ci-ok`がそれを成功と数えるのは、`changes`が成功し、その実行にそのジョブは要らないと判定した場合だけです。`perf`はプルリクエストでだけ動くので、`build`が`none`の実行と、プルリクエストではない実行が、これに当たります。`perf`が始まっても、比べるファイルが無いとき、つまり`perf`が`false`でラベル`perf`も無いときは、測らずに成功します。`changes`の失敗のような別の理由でスキップされたジョブがあると、`ci-ok`は失敗します。必要なジョブが成功しなかったときも失敗します。変更したファイルに対して不要なジョブをスキップしたPRは、その実行によって「Review and merge」の条件2を満たします。
 
@@ -573,6 +573,8 @@ nginx-testsには、リリースもタグもありません。`run.sh`は、`NGI
 
 ### nginx-testsを実行する
 
+PRの作者は、変更がnginxのバイナリの入力、`test.sh`、`test/nginx-tests/`のどれかを変えるとき、PRをreadyにする前に`run.sh`を流します。nginxのバイナリの入力を変える変更は、`sh test/ci/changes.sh BASE HEAD`が`code`を`true`にする変更です。作者は、`summary.md`の件数と終了ステータスを、PRの本文の「How was this tested」に引用します。この決まりは、[AGENTS.md](../../../AGENTS.md)の「Build and test」にあります。ngx_mrubyを入れると失敗し、入れないと失敗しないテストファイルがあると、`run.sh`は失敗します。そのときは、作者が変更を直します。PRのCIでは、nginx-testsは動きません。
+
 `run.sh`には、Linuxと、root以外のユーザーと、`test.sh`が必要とするものが要ります。root以外のユーザーが要る理由は2つあります。テストファイルは、そのユーザーだけが読めるディレクトリに設定を書きます。また、rootが起動したnginxは、ワーカーを`nobody`で動かします。テストファイルが必要とするperlのモジュールやプログラムが無いとき、そのテストファイルは失敗でなくスキップになります。Ubuntu 22.04では、ジョブは次のものをインストールします。
 
 ```console
@@ -583,13 +585,15 @@ $ sh test/nginx-tests/self-test.sh
 $ sh test/nginx-tests/run.sh
 ```
 
-macOSでは、ツリーのコピーを同じパスにマウントしたLinuxのコンテナで実行します。
+macOSでは、イメージ`ubuntu:22.04`のLinuxのコンテナで実行します。ツリーのコピーを、同じパスにマウントします。次のコマンドは、上のパッケージをインストールし、root以外のユーザーで`run.sh`を実行します。
 
 ```sh
 D=$HOME/ngx_mruby-nginx-tests   # any directory outside the checkout
 rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
 docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
 ```
+
+2026年11月27日に、arm64のMacのDocker Desktopでこのコマンドを流すと、約6分かかりました。コンテナのCPUは11で、イメージは取得済みでした。内訳は、パッケージのインストールが30秒、`run.sh`が5分13秒です。`run.sh`は、ngx_mrubyを入れたnginxと入れないnginxをビルドし、それぞれで`prove`を実行します。ngx_mrubyを入れたnginxのビルドでは、mrubyとgemも最初からビルドします。同じコピーで2回目に流すと、nginxのバージョンとconfigureのオプションが同じ間は、ngx_mrubyを入れないビルドを再利用します(`build_nginxtests/plain/build_stamp`)。1つのチェックアウトでは、`run.sh`と`test.sh`が同じ`build/`にビルドするので、2つを同時に流さないでください。
 
 テストファイルは、8000から8999のポートのうち自分がロックしたポートで、nginxを起動します。そのため、テストファイルは並列に動きます。並列の数は`NGINX_TESTS_JOBS`で決まり、デフォルトはCPUの数です。テストファイルは`test.sh`のポートを使いません。また、`test.sh`が止めるのは、自分が起動したnginxだけです。詳しい説明は上の「nginxを止める」にあります。
 
@@ -605,13 +609,13 @@ docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEB
 
 `test/nginx-tests/results.pl`は`prove.log`を読みます。proveの「Test Summary Report」にあるファイルのエントリーに、失敗したサブテスト、0以外のwait status、パースのエラーのどれかがあると、そのファイルは失敗です。パースのエラーは、planが無いか、planが間違っている場合です。エントリーにあるのが、通ったTODOのサブテストだけなら、そのファイルは通ったことになります。ログがproveの完全な実行でないとき、`results.pl`は止まります。`test/nginx-tests/compare.pl`は、一覧とサマリーを書きます。`sh test/nginx-tests/self-test.sh`は、この2つのスクリプトを、`test/nginx-tests/self-test/`にある小さなテストファイルの`prove`の出力で確かめます。これらのテストファイルは、わざと通るか、失敗するか、スキップするか、planを壊します。その動きは2つのビルドで違い、組み合わせは、`self-test.sh`の先頭のテーブルに書いてあります。
 
-両方のビルドをテストし、その結果を読めたとき、`run.sh`は0で終わります。テストファイルが失敗したときも同じです。ビルド、fetch、`prove`自身のどれかが失敗したときと、ログが完全な実行でないときは、`run.sh`は0以外のステータスで終わります。
+両方のビルドをテストし、その結果を読めて、ngx_mrubyを入れたビルドでだけ失敗するテストファイルが無いとき、`run.sh`は0で終わります。両方のビルドで失敗するファイルがあっても、0のままです。ngx_mrubyを入れると失敗し、入れないと失敗しないテストファイルがあるとき、`run.sh`は上の出力をすべて書いた後に、そのファイルの名前を出力し、1で終わります。同じ名前は`only-mruby.txt`にも書きます。入れない側で通るファイルも、スキップになるファイルも、これに当たります。`compare.pl`が結果を比べられないとき、`run.sh`は2で終わります。比べられないのは、結果のファイルが無いときと、2つのビルドが違うテストファイルを実行したときです。比べる前に止まったときは、`run.sh`は3で終わります。止まるのは、ほかのディレクトリかrootで実行したとき、スイートがほかのコミットにあるとき、fetchか、どちらかのnginxのビルドが失敗したとき、ログが`prove`の実行を最後まで記録していないときです。0、1、2は`compare.pl`の終了ステータスで、`run.sh`はそれをそのまま返します。セルフテストは、`compare.pl`の0、1、2と、チェックアウトの外で実行した`run.sh`の3を確かめます。1の確認には、ngx_mrubyを入れないと通るファイルと、入れないとスキップになるファイルの両方を使います。
 
 ### CIで実行するnginx-tests
 
-`.github/workflows/nginx-tests.yml`は、`ubuntu-22.04`でセルフテストと`run.sh`を実行します。このワークフローが動くのは、`next`へのPRがnginxのバイナリの入力、`test.sh`、`test/nginx-tests/`、ワークフローのどれかを変えるときと、「Run workflow」のときです。バイナリの入力は、性能の比較の[CIで実行する](#ciで実行する)に挙げてあります。Draftでは動かず、readyにすると始まります。`next`へのpushでは動きません。マージの記録には、PRのマージコミットでの実行を使うからです。ジョブのサマリーは`summary.md`で、ngx_mrubyを入れたビルドでだけ失敗するファイルには、warningのアノテーションが付きます。アーティファクト`nginx-tests`には、上の出力のうち、nginxのソースのコピーを除いたものが入ります。
+PRでは、nginx-testsは動きません。[nginx-testsを実行する](#nginx-testsを実行する)のとおり、PRの作者が手元で流します。CIに残すのは、`next`の先頭に対する夜間の実行です。`.github/workflows/nginx-tests.yml`は、「Run workflow」のときにだけ、`ubuntu-22.04`でセルフテストと`run.sh`を実行します(`gh workflow run nginx-tests.yml --ref next`)。GitHubがスケジュールを動かすのは、デフォルトのブランチである`master`のワークフローのファイルだけです。`master`にはこのワークフローのファイルが無いので、夜間の実行は、`master`のワークフローからのdispatchになります。`master`の`valgrind-nightly.yml`が`test.yml`の夜間の実行をdispatchするのと同じ形です([CIのvalgrind](#ciのvalgrind))。夜間の実行をdispatchするワークフローが`master`に入るまでは、手でdispatchした実行だけがあります。ジョブのサマリーは`summary.md`です。ngx_mrubyを入れたビルドでだけ失敗するファイルには、errorのアノテーションが付きます。アーティファクト`nginx-tests`には、上の出力のうち、nginxのソースのコピーを除いたものが入ります。
 
-このジョブは結果を記録します。ゲートにはなりません。ジョブが失敗するのは、セルフテスト、ビルド、fetch、`prove`自身のどれかが失敗したときと、`summary.md`が無いときだけです。テストファイルの結果では、ジョブは失敗しません。また、`ci-ok`はこのジョブを必要としません。詳しくは[必須のステータスチェック](#必須のステータスチェック)にあります。`docs/proposals/v3-plan.md`のPillar Eに従い、結果が安定したらこのジョブを必須にします。
+ジョブが失敗するのは、ngx_mrubyを入れたビルドでだけ失敗するテストファイルがあるときと、セルフテスト、ビルド、fetch、`prove`自身のどれかが失敗したときと、`summary.md`が無いときです。両方のビルドで失敗するファイルでは、ジョブは失敗しません。`ci-ok`はこのジョブを必要としません。詳しくは[必須のステータスチェック](#必須のステータスチェック)にあります。runnerでの実行は、2026年10月19日に約8分かかりました([nginx-testsの結果](#nginx-testsの結果))。readyのPRのCIの実行には、この実行は含まれません。
 
 ### nginx-testsの結果
 

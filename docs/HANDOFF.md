@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-27 (16:13 JST)
+## State as of 2026-11-27 (19:29 JST)
 
 - Heads: `master` is `06725f0cc`, the merge of
   [#873](https://github.com/matsumotory/ngx_mruby/pull/873) (2026-11-26
@@ -51,7 +51,11 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `64da154d8`, the merge of
+  all below. `next` is `bf7cfa5a1`, the merge of
+  [#881](https://github.com/matsumotory/ngx_mruby/pull/881) (2026-11-27
+  19:29 JST), below; before it, `91209c48c`, the merge of
+  [#879](https://github.com/matsumotory/ngx_mruby/pull/879) (17:02 JST),
+  below; before it, `64da154d8`, the merge of
   [#878](https://github.com/matsumotory/ngx_mruby/pull/878) (2026-11-27
   15:59 JST), below; before it, `2d87575b0`, the merge of
   [#877](https://github.com/matsumotory/ngx_mruby/pull/877) (2026-11-27
@@ -107,7 +111,7 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#879](https://github.com/matsumotory/ngx_mruby/pull/879)
+  request is [#880](https://github.com/matsumotory/ngx_mruby/pull/880)
   (`next`), below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.2: the tag `v3.0.0-alpha.2` is
   on `2d87575b0`, the merge of the check before the tag (#877), and
@@ -621,20 +625,30 @@
   #672, #847, #848 and #849 next to the item of #835 under
   "Configurations", and #796 and #799 under "Log monitoring". It was
   merged on 2026-11-27 at 15:59 JST as `64da154d8`.
-- [#879](https://github.com/matsumotory/ngx_mruby/pull/879) (`next`, writes this entry): the section of the home
+- [#879](https://github.com/matsumotory/ngx_mruby/pull/879) (`next`): the section of the home
   page on what the newest pre-release of 3.0 gives now names
   `v3.0.0-alpha.2`, lists `Content-Length` (#874) among the headers that
   go into nginx's own fields, and reads its table from
   `site/src/data/perf-v3.0.0-alpha.2.txt`, a comparison of
   `v3.0.0-alpha.2` with `v2.7.14` made with `test/perf/compare.sh` for
   the site, which replaces the report of 3.0.0-alpha.1 against 2.7.13.
-- [#881](https://github.com/matsumotory/ngx_mruby/pull/881) (`next`, writes this entry): the section of the home
+  It was merged on 2026-11-27 at 17:02 JST as `91209c48c`.
+- [#881](https://github.com/matsumotory/ngx_mruby/pull/881) (`next`): the section of the home
   page on 3.0.0-alpha.2 says, for each of its six items, what 2.x did and
   what 3.0 does (#770, #722, #855 and #874, #826 and #854, #832 and #780,
   mruby 4.1), and links the migration guide; the home pages are dated by
   the last commit to their MDX or to the files they show
   (`HOME_SOURCES`); and the checks measure short last lines of Japanese
-  text on headings only (the decision of 2026-11-27 in "Decisions").
+  text on headings only (the decision of 2026-11-27 in "Decisions"). It
+  was merged on 2026-11-27 at 19:29 JST as `bf7cfa5a1`.
+- [#880](https://github.com/matsumotory/ngx_mruby/pull/880) (`next`, writes this entry): nginx-tests runs locally
+  before a code pull request is marked ready, and nightly instead of in
+  the CI of each pull request (the decision of 2026-11-27 in
+  "Decisions"): `test/nginx-tests/compare.pl` exits 1 when a test file
+  fails on nginx with ngx_mruby and not without it, `run.sh` exits 3
+  when it stops before the comparison, `self-test.sh` checks both, and
+  `nginx-tests.yml` runs by dispatch only until a workflow on `master`
+  starts it nightly (the row of "Queue").
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1435,6 +1449,29 @@ constraints, with dates. Proposals are identified separately from adopted
 decisions. Conversation quotations and attribution are not a substitute for
 checking whether a decision fits the evidence and requirements.
 
+- **2026-11-27, nginx-tests runs locally.** The author of a change that
+  touches an input of the nginx binary (`test/ci/changes.sh` gives `code`
+  `true`), `test.sh` or `test/nginx-tests/` runs `sh
+  test/nginx-tests/run.sh` locally before the PR is marked ready (in a
+  Linux container on macOS), and the check fails when a test file fails
+  on nginx with ngx_mruby and not on nginx without it; the author fixes
+  the change. PRs no longer run `nginx-tests.yml` in CI, which keeps
+  nginx-tests only as a nightly run of the tip of `next`. Scope: `next`,
+  where nginx-tests exists; `master` gets only the workflow that starts
+  the nightly run, because GitHub runs a schedule only from the default
+  branch; until that workflow is on `master`, the only runs of
+  `nginx-tests.yml` are dispatches by hand. Rationale: the CI rules of 2026-10-31 and 2026-11-02 (below)
+  run locally what can run locally and do not repeat it in CI, and
+  nginx-tests runs in Docker; a PR's CI run loses a job of about 8
+  minutes, and the local checks of a code PR gain about 6 minutes (in a container
+  on an arm64 Mac on 2026-11-27: 30 seconds for the packages and 5
+  minutes 13 seconds for `run.sh`, both builds included). This
+  replaces the row "nginx-tests run against nginx with ngx_mruby loaded"
+  of Pillar E in `docs/proposals/v3-plan.md`, which recorded the results
+  first and made the job required in CI once they were stable. Written in
+  AGENTS.md ("Branches and pull requests", "Build and test"), the PR
+  template, `docs/test/README.md` and `docs/proposals/v3-plan.md` in
+  #880.
 - **2026-11-27, short last lines of Japanese text on the site.** The rule
   that no Japanese text of the site ends with a last line of one or two
   characters applies to headings only (h1 to h4). Scope: `site/`, both
@@ -1686,7 +1723,7 @@ Taken up and still open: none.
 | A known-length HEAD response finalized by an mruby output body filter keeps its connection for the following GET ([the review of #574](https://github.com/matsumotory/ngx_mruby/pull/574#issuecomment-6166201549), should fix 1; #628 reproduced it) | `master`, then `next` | Fixed on master in [#752](https://github.com/matsumotory/ngx_mruby/pull/752) with failing-test and passing-fix commits, and integrated into next in [#756](https://github.com/matsumotory/ngx_mruby/pull/756). The combined suite passed all 759 tests; local validation, independent review, CI and publication checks passed. Both release lines and the current Filter reference describe the known-length HEAD scope |
 | An end-to-end benchmark scenario: throughput and p50 and p99 latency with `oha` or `h2load`, planned in AGENTS.md "Design principles" and in section 8 of the plan, which also records the reference proxy end to end | `next` | Ready to start; where the results are recorded is decided when it is added (AGENTS.md) |
 | Site: steps 1 to 4, 6 and 7 are merged (#591, #607, #614, #617–#623, #626, #629–#632, #653–#657), and the site is deployed from `next`. Step 5, the Japanese pages, is merged (#705 for six pages, #703 for the 2.x release notes on `master`); the handoff page stays English with a notice, and `NOTES_ONLY` of `check-japanese-lines.mjs` still lists four release notes (the subsection "Japanese pages of the site" of "Work in progress") | `next` for `site/`; `master` for 2.x sources | Still open: the emptying of `NOTES_ONLY` once `master` is merged into `next`; the site on Astro without Starlight (5.4 of the site proposal, #700, the owner's decision of 2026-11-01), whose first layer, the own shell beside Starlight behind `NGX_MRUBY_SITE_SHELL=own`, is merged in #708, and whose rest is #713 (from a Codex session, taken over by Claude Code for the browser acceptance), which also changes the iPhone width to 402px with the root size of 4.4; the 3.x development banner of 3.4; and the observability and certificate-lookup sample prerequisites of #619. Q9 is done (Discussions on, wiki off, 2026-11-01) |
-| nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files needed a module that `test.sh` did not build; since [#871](https://github.com/matsumotory/ngx_mruby/pull/871), `test.sh` builds `http_v2` and `http_v3`, which 82 of them needed), with and without ngx_mruby, in the `nginx-tests` workflow | `next` | Ready to start: #602 is merged |
+| nginx-tests with the modules that its skipped files need: a build with the options of `test.sh` and `--with-stream_ssl_module`, `--with-mail` and the other modules that "Results of nginx-tests" in `docs/test/README.md` lists (in the CI run of #602, 189 of the 209 skipped files needed a module that `test.sh` did not build; since [#871](https://github.com/matsumotory/ngx_mruby/pull/871), `test.sh` builds `http_v2` and `http_v3`, which 82 of them needed), with and without ngx_mruby, in `test/nginx-tests/run.sh` (run locally by the authors of code changes, and nightly by the `nginx-tests` workflow) | `next` | Ready to start: #602 is merged |
 | nginx-tests with ngx_mruby code configured: runs that add handlers or filters with code for every request through `TEST_NGINX_GLOBALS_HTTP` (the Pillar E row of the plan), compared with the run without code. The pull request decides which code; since [#720](https://github.com/matsumotory/ngx_mruby/pull/720), a rewrite handler that ends without `Nginx.return` goes on to the next phase on `next` | `next` | Ready to start: #602 is merged |
 | Test harness rewrite (step 2 of section 6 of the plan; Pillar E): [#635](https://github.com/matsumotory/ngx_mruby/pull/635) (merged, `c4e6ac6cc`) made `test.sh` stop only the nginx that it started, by its pid, with no `killall` or `pkill`, and send SIGTERM again while the single nginx process still runs, because that process can miss a SIGTERM that arrives right before it waits for events (the run at `7926f72`, where nginx stayed in `epoll_wait()` for 20 minutes after it logged the SIGTERM: "Stopping nginx" in `docs/test/README.md` has the cause and the measurements). [#641](https://github.com/matsumotory/ngx_mruby/pull/641) (merged, `be559a017`) added `TEST_SH_PORT_OFFSET`, which moves every port of the suite, so that two checkouts can run `test.sh` at the same time ("Ports" in `docs/test/README.md`). [#706](https://github.com/matsumotory/ngx_mruby/pull/706) added nginx with `master_process on` and several workers, and a reload in the middle of a case: `test/t/cases/_workers.rb` starts such an nginx from `test/conf/workers/`, and `test/t/cases/workers.rb` checks that each of four workers answers from an mrb_state of its own, and that across a SIGHUP the old workers finish an `Nginx::Async.sleep` and an `Nginx::Stream::Async.sleep` in flight while the new configuration answers ("Several workers and reloads" in `docs/test/README.md`). [#870](https://github.com/matsumotory/ngx_mruby/pull/870) runs `test/t/ngx_mruby.rb` and the case files with CRuby, which sends their requests: `test/t/client.rb` defines `HttpRequest`, `SimpleHttp` and `SimpleTest` with the requests and results of the mrbgems of the `test` build of mruby, which the tests no longer run (the `test` build stays in `build_config.rb`, an input of the measured binary, for a pull request of its own). [#871](https://github.com/matsumotory/ngx_mruby/pull/871) builds nginx with the http_v2 and http_v3 modules and adds `HttpVersions` to `test/t/client.rb`, which sends a request with HTTP/1.1 or HTTP/2 through curl and with HTTP/3 through aioquic (`test/t/cases/_h3_client.py`, installed by `test.sh` from `test/h3/requirements.txt`); `test/t/cases/http2_http3.rb` expects the same response from ngx_mruby's handlers, filters and SSL handshake handler over the three versions ("HTTP/2 and HTTP/3" in `docs/test/README.md`). Encrypted Client Hello, the other half of the plan's item on HTTP/3 and ECH, waits for an OpenSSL with ECH (4.0) in the builds. A should fix of the review of #635 waits for the pull request that next changes `test/build_release.sh`, an input of the `perf` job: its comment still says that `test.sh` kills every running nginx. The readiness wait of #593 is the first part, on `next` since the merge of `master` at `6b27f08da` | `next` | Several workers and reloads: done by [#706](https://github.com/matsumotory/ngx_mruby/pull/706) (decision (3) of 2026-11-01). Requests from CRuby: done by [#870](https://github.com/matsumotory/ngx_mruby/pull/870). The HTTP/2 and HTTP/3 clients: done by [#871](https://github.com/matsumotory/ngx_mruby/pull/871) |
 | CI runs only the jobs that a change needs: done on both branches by [#676](https://github.com/matsumotory/ngx_mruby/pull/676), [#685](https://github.com/matsumotory/ngx_mruby/pull/685), [#686](https://github.com/matsumotory/ngx_mruby/pull/686) and [#692](https://github.com/matsumotory/ngx_mruby/pull/692) on `next`, and [#679](https://github.com/matsumotory/ngx_mruby/pull/679), [#690](https://github.com/matsumotory/ngx_mruby/pull/690) and [#693](https://github.com/matsumotory/ngx_mruby/pull/693) on `master`; the owner's decisions and rules are in AGENTS.md and `docs/test/README.md`. Left: a pull request to `master` that gives it the lines of `test/ci/changes.sh` and `test/ci/changes_test.sh` that `next` has (on `master`, a change of `test/soak/mock_llm_test.rb` alone runs that check only with the label `perf`); the first run of the whole build matrix through `fromJSON` (should fix 4 of [the review of #686](https://github.com/matsumotory/ngx_mruby/pull/686#issuecomment-6541409852)), which the nightly run under valgrind makes; and from [the review of #693](https://github.com/matsumotory/ngx_mruby/pull/693#issuecomment-6542620420): local commands for the build of the 2.x pages in "The 2.x pages of the site" of `docs/test/README.md` on `master` (should fix 1 and 2), and on both branches, a sentence in "Required status check" that a draft run queued after the ready run cancels it in `site-v2`, `codeql` and `zizmor`, or a concurrency group that includes the draft state (should fix 4). [#778](https://github.com/matsumotory/ngx_mruby/pull/778) made two changes on `master`: "The 2.x pages of the site" in `docs/test/README.md` names `site/.node-version` instead of the number of the Node.js version (should fix 1 of [the review of #774](https://github.com/matsumotory/ngx_mruby/pull/774#issuecomment-6740176012)), and `docs/releases/v2.7.6.ja.md` takes the two edits of `c41981dd5` in [#777](https://github.com/matsumotory/ngx_mruby/pull/777), so that the file is the same on both branches before the 2.7.6 tag. With [#785](https://github.com/matsumotory/ngx_mruby/pull/785), `docs/test/README.md` of `next` takes the same sentence, and `docs/releases/v2.7.6.md` and `.ja.md` are the same on both branches. Four cells: code-changing pull requests run four cells of the build matrix: done on both branches by [#702](https://github.com/matsumotory/ngx_mruby/pull/702) on `next` (`bf1b742b7`) and [#704](https://github.com/matsumotory/ngx_mruby/pull/704) on `master` (`166341b93`), with `build` `standard` of `test/ci/changes.sh`; every cell runs only nightly, on a tag, in the check pull request before a tag (the label `full-matrix`, which exists in the repository) and on "Run workflow" without `base` | `master`, `next` | Ready to start |
@@ -1698,7 +1735,8 @@ Taken up and still open: none.
 | `Content-Length` set through `Nginx::Headers_out` and the output of `Nginx.rputs`: design how a length that a script sets relates to the length that `Nginx.rputs` adds to `content_length_n`, then let `headers_out["Content-Length"]` set nginx's field (the part of section 2.2 of `docs/proposals/archive/core-alpha1.md` that [#855](https://github.com/matsumotory/ngx_mruby/pull/855) leaves out; see "Decisions") | `next` | Done: designed in `docs/proposals/archive/content-length.md` and implemented in [#874](https://github.com/matsumotory/ngx_mruby/pull/874), merged as `3747aa37f` on 2026-11-26: `Nginx::Headers_out#[]=` with `Content-Length` sets nginx's own field, which ngx_mruby's header filter reconciles with the body nginx frames before the headers go out (a handler's output length, or the length nginx has for a proxied or static response; a differing value is replaced with a `warn` line; an unknown length is sent chunked), so the response carries one `Content-Length`; `#delete` and `#[]= nil` send it chunked. The 2.x line keeps compatibility, and its fix shipped in 2.7.14. Published advisory [GHSA-2cf7-qh69-j29q](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2cf7-qh69-j29q) |
 | The migration guide (`docs/migration/README.md` and `docs/ja/migration/README.md`) links to every entry of "Behavior changes" of `docs/releases/v3.0.0.md`, as "File names" in `docs/releases/README.md` says: it has no item for #672, #751, #758, #789, #796, #799, #847, #848 and #849, entries that `v3.0.0-alpha.1` already had (found in the review of [#877](https://github.com/matsumotory/ngx_mruby/pull/877)) | `next` | Done in [#878](https://github.com/matsumotory/ngx_mruby/pull/878): the guide links to all 79 entries |
 | `docs/releases/v3.0.0.ja.md`: lines that put a Japanese clause in half-width parentheses; "The Japanese file" in `docs/releases/README.md` turns such a clause into a clause or a sentence of its own (#862 left them, see its body) | `next` | Done in [#864](https://github.com/matsumotory/ngx_mruby/pull/864), which rewrites the 33 lines that the tip of `next` had (#862 counted 22) with the meaning of the English entries |
-| nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
+| nginx-tests required: `run.sh` fails when a test file fails on the build with ngx_mruby and not on the build without it, the author of a code change runs it locally before the PR is ready, and PRs no longer run the workflow (the decision of 2026-11-27 above) | `next` | Done in #880 |
+| The nightly run of nginx-tests on `next`: a workflow on `master` (a job in `valgrind-nightly.yml`, or a workflow of its own) that starts `nginx-tests.yml` on `next` by `gh workflow run nginx-tests.yml --ref next` on a schedule and fails when that run fails, as `valgrind-nightly.yml` starts `test.yml`; the same PR updates the comment of the category `code` in `master`'s `test/ci/changes.sh` (lines 44 and 45, which still say that `nginx-tests.yml` runs by its path filter) to the text of `next` | `master` | Ready to start after #880 is merged |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. On `master`, [#865](https://github.com/matsumotory/ngx_mruby/pull/865) does the same: `ci-ok` needs `perf`, with the `pull-request` condition and an `accepted.txt` that has no line; `master` judges the number without GC, since its mruby 3.3.0 has no constant cache | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: done by [#865](https://github.com/matsumotory/ngx_mruby/pull/865) |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). [#867](https://github.com/matsumotory/ngx_mruby/pull/867) samples after each of 6 windows (`SOAK_WINDOWS`) and bounds the least-squares slope of both values at 8 bytes per request (`SOAK_SLOPE_B`), from runs on aarch64; the `soak` job sets `SOAK_REQUIRE_SMAPS_ROLLUP=1`. The `VmRSS` limits are unchanged ("Thresholds and calibration" of the soak test in `docs/test/README.md`) | `next` | Done in [#867](https://github.com/matsumotory/ngx_mruby/pull/867) |
 | Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Merged in [#758](https://github.com/matsumotory/ngx_mruby/pull/758) as `8beaaa381`; local checks, independent review, CI, publication verification and cleanup passed |

@@ -273,8 +273,8 @@ change.
 
 | Category | Paths | What a ready pull request runs |
 |---|---|---|
-| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `nginx-tests`, `examples` and `codeql` by their own path filters |
-| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true` |
+| `code` | `src/`, `mrbgems/`, `mruby/`, `dependence/`, `build_config.rb`, `build_config.rb.lock`, `configure`, `configure.in`, `config.in`, `Makefile.in`, `build.sh`, `nginx_version`, and every path that no other category names | `test.yml`: the four standard cells of the `build` matrix (below), `soak` and `perf`. `examples` and `codeql` by their own path filters. No run of `nginx-tests`: the author runs it locally ([Running nginx-tests](#running-nginx-tests)) |
+| `tests` | `test/`, `test.sh`, `.github/workflows/test.yml` | `test.yml`: the four standard cells; `soak` when `soak` is `true`; `perf` compares when `perf` is `true`. For a change of `test.sh` or `test/nginx-tests/`, the author also runs nginx-tests locally ([Running nginx-tests](#running-nginx-tests)) |
 | `docs` | `docs/`, the Markdown files at the top, `AUTHORS`, `LEGAL`, `LICENSE`, `MITL` | No job on `next`: the author runs `npm run check:ci` in `site/` ([Site CI](#site-ci)), and `site.yml` checks the merge on the push to `next`. On `master`, the author checks the 2.x pages locally ([The 2.x pages of the site](#the-2x-pages-of-the-site)) |
 | `site` | `site/`, `.github/workflows/site.yml` | No job: as for `docs` |
 | `examples` | `examples/` | `examples`; the site as for `docs` |
@@ -399,8 +399,9 @@ nightly run under valgrind, which the schedule of `valgrind-nightly.yml` on
 CI](#valgrind-in-ci)). The other workflows decide on their own when they
 run: `site` deploys on every push to `next`, and `codeql` scans pushes to
 `master` and `next` that change `src/`, `mrbgems/`, the workflows or its
-configuration ([CodeQL](#codeql)); `nginx-tests`, `examples` and `zizmor`
-run on pull requests only. After a deploy, the `verify-live` job of `site`
+configuration ([CodeQL](#codeql)); `examples` and `zizmor` run on pull
+requests only, and `nginx-tests` on "Run workflow" only ([nginx-tests in
+CI](#nginx-tests-in-ci)). After a deploy, the `verify-live` job of `site`
 reads the GitHub Pages environment and deployment through the REST API with
 the job's own `GITHUB_TOKEN` (`contents: read`), so that the requests do not
 share the anonymous limit of the runner's IP address; on a rate limit
@@ -1531,6 +1532,14 @@ older ones.
 
 ### Running nginx-tests
 
+The author of a pull request runs `run.sh` before marking it ready when
+the change touches an input of the nginx binary (`sh test/ci/changes.sh
+BASE HEAD` gives `code` `true`), `test.sh` or `test/nginx-tests/`, and
+quotes the counts of `summary.md` and the exit status under "How was this
+tested" ("Build and test" in [AGENTS.md](../../AGENTS.md)). A test file
+that fails with ngx_mruby and not without it fails the run, and the
+author fixes the change; pull requests do not run nginx-tests in CI.
+
 `run.sh` needs Linux, a user other than root (the test files write their
 configurations to directories that only that user can read, and nginx
 started by root runs its workers as `nobody`), and what `test.sh` needs.
@@ -1545,14 +1554,25 @@ $ sh test/nginx-tests/self-test.sh
 $ sh test/nginx-tests/run.sh
 ```
 
-On macOS, run it in a Linux container on a copy of the tree, mounted at the
-same path:
+On macOS, run it in a Linux container of the image `ubuntu:22.04`, on a
+copy of the tree mounted at the same path. The command installs the
+packages above and runs `run.sh` as a user other than root:
 
 ```sh
 D=$HOME/ngx_mruby-nginx-tests   # any directory outside the checkout
 rm -rf "$D" && mkdir -p "$D" && git archive HEAD | tar -x -C "$D"
 docker run --rm -v "$D:$D" -w "$D" ubuntu:22.04 sh -c 'apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y build-essential perl rake ruby bison git gperf wget ca-certificates openssl zlib1g-dev libpcre3-dev libssl-dev libio-socket-ssl-perl libnet-ssleay-perl libfcgi-perl libscgi-perl libcache-memcached-perl libcache-memcached-fast-perl libprotocol-websocket-perl memcached >/dev/null && useradd -m nt && chown -R nt "$PWD" && su nt -c "NGX_MRUBY_COMMIT='"$(git rev-parse HEAD)"' sh test/nginx-tests/run.sh"'
 ```
+
+On 2026-11-27, on an arm64 Mac (Docker Desktop, 11 CPUs in the
+container, the image already pulled), this command took about 6
+minutes: 30 seconds for the packages, and 5 minutes 13 seconds for
+`run.sh`, which builds the two nginx (the one with ngx_mruby with mruby
+and its gems, from scratch) and runs `prove` on each. A second run in
+the same copy reuses the build without ngx_mruby while its nginx version
+and configure options stay the same (`build_nginxtests/plain/build_stamp`).
+In one checkout, `run.sh` and `test.sh` build into the same `build/`, so
+do not run them there at the same time.
 
 The test files start nginx on ports from 8000 to 8999 that they lock, so
 they run in parallel (`NGINX_TESTS_JOBS`, by default the number of CPUs).
@@ -1590,28 +1610,44 @@ the output of `prove` for the small test files in
 on purpose, differently for the two builds (the table at the top of
 `self-test.sh`).
 
-`run.sh` exits with 0 when both builds were tested and their results read,
-also when test files failed. It exits with another status when a build,
-the fetch or `prove` itself failed, or when a log is not a complete run.
+`run.sh` exits with 0 when both builds were tested, their results were
+read and no test file fails with ngx_mruby only; files that fail on both
+builds do not change it. It exits with 1 when a test file fails with
+ngx_mruby and not without it, where it passes or is skipped (the files
+of `only-mruby.txt`, which it prints), after writing all the output above. It exits with 2
+when `compare.pl` cannot compare the results (a missing result file, or
+builds that ran different files), and with 3 when it stops before the
+comparison: run from another directory or as root, the suite at another
+commit, a failed fetch, a failed build of either nginx, or a log that is
+not a complete run of `prove`. The 0, 1 and 2 are the status of
+`compare.pl`, which `run.sh` passes on. The self-test checks the statuses
+0, 1 and 2 of `compare.pl` (a file that fails with ngx_mruby and passes
+without it, and one that is skipped without it, both give 1), and the
+status 3 of `run.sh` outside a checkout.
 
 ### nginx-tests in CI
 
-`.github/workflows/nginx-tests.yml` runs the self-test and `run.sh` on
-`ubuntu-22.04`, on pull requests to `next` that change an input of the
-nginx binary (the inputs that "[In CI](#in-ci)" of the performance
-comparison lists), `test.sh`, `test/nginx-tests/` or the workflow, and on
-"Run workflow". A draft runs nothing, and marking it ready for review
-starts the run. Pushes to `next` do not run it: the run of the pull request
-on its merge commit is the record of the merge. The job summary is `summary.md`, each
-file that fails with ngx_mruby only is a warning annotation, and the
-artifact `nginx-tests` has the output above without the copy of the nginx
-source.
+Pull requests do not run nginx-tests: their authors run it locally, as
+[Running nginx-tests](#running-nginx-tests) says. CI keeps a nightly run
+of the tip of `next`. `.github/workflows/nginx-tests.yml` runs the
+self-test and `run.sh` on `ubuntu-22.04` on "Run workflow" only (`gh
+workflow run nginx-tests.yml --ref next`): GitHub runs a schedule only
+from the workflow files on the default branch, `master`, which has no
+copy of this workflow, so the nightly run is a dispatch from a workflow
+on `master`, as `valgrind-nightly.yml` on `master` dispatches the nightly
+runs of `test.yml` ([valgrind in CI](#valgrind-in-ci)). Until the
+workflow that starts the nightly run is on `master`, the runs are the
+dispatches by hand. The job summary is `summary.md`, each file that fails
+with ngx_mruby only is an error annotation, and the artifact
+`nginx-tests` has the output above without the copy of the nginx source.
 
-The job records; it does not gate. It fails only when the self-test, a
-build, the fetch or `prove` itself fails, or `summary.md` is missing, not
-on the result of a test file, and `ci-ok` does not need it (see
-[Required status check](#required-status-check)). Pillar E of
-`docs/proposals/v3-plan.md` makes it required once its results are stable.
+The job fails when a test file fails with ngx_mruby only, and when the
+self-test, a build, the fetch or `prove` itself fails, or `summary.md` is
+missing; a file that fails on both builds does not fail it. `ci-ok` does
+not need it (see [Required status check](#required-status-check)). On the
+runner, a run took about 8 minutes on 2026-10-19 ([Results of
+nginx-tests](#results-of-nginx-tests)); the CI run of a ready pull
+request does not include it.
 
 ### Results of nginx-tests
 

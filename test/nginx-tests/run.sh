@@ -27,11 +27,27 @@
 #   summary.md                        counts and the lists of failed files
 #   only-mruby.txt, both.txt, only-plain.txt  the failed files by build
 #
-# The exit status is 0 when both builds were tested and the results were read,
-# also when test files failed; it is not 0 when a build, the fetch or prove
-# itself failed, or when a log has no result line of prove.
+# The exit status:
+#
+#   0  both builds were tested, their results were read, and no test file
+#      fails with ngx_mruby only; a file that fails on both builds does not
+#      change it
+#   1  a test file fails on nginx with ngx_mruby and not on nginx without it
+#      (only-mruby.txt): the check fails, and the author of the change fixes
+#      it. The files above are written, as for 0.
+#   2  compare.pl could not compare the results (a missing or empty result
+#      file, or builds that ran different test files)
+#   3  run.sh stopped before it compared: run from the wrong directory or as
+#      root, the suite at another commit, a failed fetch or build of either
+#      nginx, or a log that is not a complete run of prove
 
 set -e
+
+# Every stop before the comparison exits with 3, whatever the status of the
+# command that failed (test.sh, git, configure and make exit with 1 or 2 as
+# well), so that 1 and 2 keep the meanings above.
+stage=prepare
+trap 'st=$?; if [ "$stage" = prepare ] && [ "$st" -ne 0 ]; then echo "run.sh: stopped with status $st before the results were compared" >&2; exit 3; fi' EXIT
 
 # nginx-tests has no releases or tags. The commit is pinned so that a new test
 # upstream does not change the results of this job without a change here; move
@@ -140,4 +156,12 @@ if [ -z "$head" ]; then
         head="unknown (not a git checkout)"
     fi
 fi
-perl "$HERE/compare.pl" "$OUT" "$suite_commit" "$NGINX_SRC_VER" "$head"
+stage=compare
+status=0
+perl "$HERE/compare.pl" "$OUT" "$suite_commit" "$NGINX_SRC_VER" "$head" || status=$?
+case "$status" in
+    0) echo "run.sh: no test file fails with ngx_mruby only" ;;
+    1) echo "run.sh: test files fail with ngx_mruby and not without it: see $OUT/only-mruby.txt and $OUT/summary.md" >&2 ;;
+    *) echo "run.sh: compare.pl could not compare the results (exit status $status)" >&2 ;;
+esac
+exit "$status"
