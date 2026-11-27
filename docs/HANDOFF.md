@@ -1,6 +1,6 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-27 (13:56 JST)
+## State as of 2026-11-27 (14:23 JST)
 
 - Heads: `master` is `06725f0cc`, the merge of
   [#873](https://github.com/matsumotory/ngx_mruby/pull/873) (2026-11-26
@@ -51,7 +51,9 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `3f5b1391b`, the merge of
+  all below. `next` is `b92e8c0ca`, the merge of
+  [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (2026-11-27
+  14:22 JST), below; before it, `3f5b1391b`, the merge of
   [#876](https://github.com/matsumotory/ngx_mruby/pull/876) (2026-11-27
   13:55 JST), below; before it, `3747aa37f`, the merge of
   [#874](https://github.com/matsumotory/ngx_mruby/pull/874) (2026-11-26
@@ -101,8 +103,8 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#875](https://github.com/matsumotory/ngx_mruby/pull/875)
-  (`next`), which brings `master` at `06725f0cc` into `next`, below. `v2.x` mirrors `master`.
+  request is [#877](https://github.com/matsumotory/ngx_mruby/pull/877)
+  (`next`), the check before the `v3.0.0-alpha.2` tag, below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
@@ -130,9 +132,9 @@
   `docs/releases/v2.7.14.md` and `.ja.md`, in the form of "The GitHub
   release" in `docs/releases/README.md`, and the published advisory
   [GHSA-2cf7-qh69-j29q](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2cf7-qh69-j29q)
-  (published 2026-11-26 at 18:34 JST); #873 then added the published
-  advisory id to the two release-note files and to the release body
-  (2026-11-26 18:53 JST). Right after the release, `site.yml` ran on
+  (published 2026-11-26 at 18:34 JST); the session then added the
+  published advisory id to the release body (18:51 JST), and #873 added
+  it to the two release-note files (merged at 18:53 JST). Right after the release, `site.yml` ran on
   `next`
   ([run 45676373093](https://github.com/matsumotory/ngx_mruby/actions/runs/45676373093),
   success), and the home page of ngx.mruby.org names v2.7.14
@@ -501,8 +503,9 @@
   before upgrading"); #872 and #873 merged after the tag. The English and
   the Japanese files have the same sections and entries, and
   `MODULE_VERSION` of `master` is `2.7.14`. The callgrind comparison of
-  `v2.7.13` (`e0b17ec47`) with the fix (`af98f7df9`, whose code differs
-  from the published `0a5b6dbaa` only in a comment) (`sh
+  `v2.7.13` (`e0b17ec47`) with the fix as it was in the advisory's private
+  fork, whose code differs from the published `0a5b6dbaa` only in a
+  comment (`sh
   test/perf/compare.sh`, N=20000 WARMUP=2000) has all 14 scenarios `ok`:
   `headers`, the path the fix touches, 34803 → 34815 Ir per request
   without GC (+12, +0.03%); `proxy_stream_plain_50`, which varies with
@@ -555,15 +558,30 @@
   filter on a response whose length nginx knows sends the length of the
   body the filter produces, without the reconciliation. It was merged on
   2026-11-27 at 13:55 JST as `3f5b1391b`.
-- [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (`next`, writes this entry): merges `master` at `06725f0cc`
+- [#875](https://github.com/matsumotory/ngx_mruby/pull/875) (`next`): merges `master` at `06725f0cc`
   (the 2.7.14 fix, #872 and #873) into `next`. The conflicts keep
   `next`'s side: `src/http/ngx_http_mruby_request.c`,
   `test/t/cases/content_length.rb` and
   `test/conf/conf.d/76-content-length.conf` stay as #874 left them,
   `MODULE_VERSION` stays `3.0.0`, and AGENTS.md keeps `next`'s list of
   the ports of `test.sh`. The merged tree differs from `next` only in
-  `Makefile.in` (#872) and the 2.x release notes. Its state, CI run and
-  review are recorded on the pull request.
+  `Makefile.in` (#872) and the 2.x release notes. Its review had no
+  "must fix" item, and its three "should fix" items are fixed in #877.
+  It was merged on 2026-11-27 at 14:22 JST as `b92e8c0ca`.
+- [#877](https://github.com/matsumotory/ngx_mruby/pull/877) (`next`, writes this entry): the check before the
+  `v3.0.0-alpha.2` tag ("Before the tag" in `docs/releases/README.md`),
+  from `v3.0.0-alpha.1`. It adds an item for #874 to the migration
+  guide (English and Japanese), which still said that `Content-Length`
+  stays a header line, updates step 2 of `docs/proposals/v3-plan.md` for
+  #874, writes the heading of the #874 entry as the other headings of
+  `v3.0.0.md` and `.ja.md`, and adds 18096, 18106 and 18109 to the ports
+  of `test.sh` in AGENTS.md. Its body lists the pull requests of the
+  range with the section of each entry and quotes the performance
+  comparison with `v3.0.0-alpha.1`; its run has the label `full-matrix`.
+  Its review found that the migration guide also has no item for nine
+  entries of "Behavior changes" that `v3.0.0-alpha.1` already had (#672,
+  #751, #758, #789, #796, #799, #847, #848 and #849); the pull request
+  after the `v3.0.0-alpha.2` tag adds them.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1614,6 +1632,7 @@ Taken up and still open: none.
 | `build_config.rb` rewrite with explicit gems (step 3 of section 6; Pillar A): done. [#771](https://github.com/matsumotory/ngx_mruby/pull/771) replaces `monochromegane/mruby-secure-random` and `iij/mruby-digest` with `mrbgems/secure-random` (`SecureRandom` on `RAND_bytes` of OpenSSL) and `mrbgems/digest` (`Digest` on the EVP and `EVP_MAC` APIs of OpenSSL 3), as decided on 2026-11-09, keeping the classes and methods of the two gems; the differences are in its entry of the 3.0.0 release notes. The reasons of the decision: the list of mruby gems has no maintained replacement (Asmod4n/mruby-sysrandom replaces mruby-secure-random with another API, and nothing replaces mruby-digest), and gems in this repository are checked by the suite, CI and the `perf` job of ngx_mruby as they are. [#766](https://github.com/matsumotory/ngx_mruby/pull/766) did the rest of the row: `iij/mruby-env` and `iij/mruby-process` replaced by the core gems mruby-env and mruby-process (with mruby-signal), `mruby-onig-regexp` kept as item 1 of section 7 decides, and `mruby-vedis` and `mruby-localmemcache` out of the default build | `next` | Done: [#771](https://github.com/matsumotory/ngx_mruby/pull/771) merged as `6196a49f1` on 2026-11-09 |
 | mruby 4.1.0 (step 3 of section 6; item 1 of section 7). The owner decided on 2026-10-29 that `next` bundles `4.1.0-rc2` now and moves to 4.1.0 in a small subtree pull request when it is tagged. `next` bundles `4.1.0-rc2` since [#678](https://github.com/matsumotory/ngx_mruby/pull/678). The step to 4.1.0: `./update-mruby-subtree 4.1.0`, `vendor-mruby-prism` if the gitlink of Prism moves, the lock, and the release notes | `next` | The tag `4.1.0` of mruby |
 | `Content-Length` set through `Nginx::Headers_out` and the output of `Nginx.rputs`: design how a length that a script sets relates to the length that `Nginx.rputs` adds to `content_length_n`, then let `headers_out["Content-Length"]` set nginx's field (the part of section 2.2 of `docs/proposals/archive/core-alpha1.md` that [#855](https://github.com/matsumotory/ngx_mruby/pull/855) leaves out; see "Decisions") | `next` | Done: designed in `docs/proposals/archive/content-length.md` and implemented in [#874](https://github.com/matsumotory/ngx_mruby/pull/874), merged as `3747aa37f` on 2026-11-26: `Nginx::Headers_out#[]=` with `Content-Length` sets nginx's own field, which ngx_mruby's header filter reconciles with the body nginx frames before the headers go out (a handler's output length, or the length nginx has for a proxied or static response; a differing value is replaced with a `warn` line; an unknown length is sent chunked), so the response carries one `Content-Length`; `#delete` and `#[]= nil` send it chunked. The 2.x line keeps compatibility, and its fix shipped in 2.7.14. Published advisory [GHSA-2cf7-qh69-j29q](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2cf7-qh69-j29q) |
+| The migration guide (`docs/migration/README.md` and `docs/ja/migration/README.md`) links to every entry of "Behavior changes" of `docs/releases/v3.0.0.md`, as "File names" in `docs/releases/README.md` says: it has no item for #672, #751, #758, #789, #796, #799, #847, #848 and #849, entries that `v3.0.0-alpha.1` already had (found in the review of [#877](https://github.com/matsumotory/ngx_mruby/pull/877)) | `next` | The `v3.0.0-alpha.2` tag; the pull request after it adds the items, each with what to look for or that nothing needs a change |
 | `docs/releases/v3.0.0.ja.md`: lines that put a Japanese clause in half-width parentheses; "The Japanese file" in `docs/releases/README.md` turns such a clause into a clause or a sentence of its own (#862 left them, see its body) | `next` | Done in [#864](https://github.com/matsumotory/ngx_mruby/pull/864), which rewrites the 33 lines that the tip of `next` had (#862 counted 22) with the meaning of the English entries |
 | nginx-tests required: the `nginx-tests` workflow records its results and fails only when a build, the fetch of the suite or `prove` fails. In the runs of 2026-10-28 and 2026-10-29 the build with ngx_mruby and the build without it have the same counts (511 files, 302 passed, 0 failed, 209 skipped). To do: the job fails when the build with ngx_mruby fails a file that the build without it passes, and the job joins the `needs` of `ci-ok` | `next` | Ready to start: the counts are the same in every run since #602 |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. On `master`, [#865](https://github.com/matsumotory/ngx_mruby/pull/865) does the same: `ci-ok` needs `perf`, with the `pull-request` condition and an `accepted.txt` that has no line; `master` judges the number without GC, since its mruby 3.3.0 has no constant cache | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: done by [#865](https://github.com/matsumotory/ngx_mruby/pull/865) |

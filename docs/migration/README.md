@@ -716,8 +716,8 @@ not enough, and show the change.
   and deleting `Server` or `Date` gives nginx's own back; and
   `proxy_pass` sends its own value of a header that `proxy_set_header`
   or the proxy module sets, instead of the line that the script added.
-  `Content-Length` is a line as on 2.x. A value that is not a String is
-  converted with `to_s` where 2.x raised `TypeError`:
+  A value that is not a String is converted with `to_s` where 2.x raised
+  `TypeError`:
 
   ```ruby
   h = Nginx::Request.new.headers_out
@@ -731,6 +731,33 @@ not enough, and show the change.
   # 3.0.0: the value of a request header that proxy_pass sets itself comes from proxy_set_header
   mruby_set_code $backend_host 'Nginx::Request.new.headers_in["X-Tenant"].to_s + ".internal"';
   proxy_set_header Host $backend_host;
+  ```
+
+- [`Content-Length` set through `Nginx::Headers_out` is nginx's own length](../releases/v3.0.0.md#content-length-set-through-nginxheaders_out-is-nginxs-own-length-874):
+  look for `headers_out` with `Content-Length` in any case. Up to
+  2.7.13, the script's value was a second line next to nginx's, and
+  [2.7.14](../releases/v2.7.14.md#a-content-length-set-through-nginxheaders_out-is-no-longer-sent-as-a-response-header-line)
+  does not send it. On 3.0.0, `[]=` sets the length that nginx frames
+  the body by, so the response has one `Content-Length` line. Before the
+  headers go out, 3.0.0 replaces a value that differs from the length of
+  the body that nginx sends by that length, with a line in `error.log` at
+  the `warn` level, and sends a response whose length is not known
+  chunked. `[]` returns the value that the script set, or else the length
+  that nginx has for the response; `delete` removes the length, so the
+  response is sent chunked; and `[]=` with a value that is not a
+  non-negative decimal raises `ArgumentError`:
+
+  ```ruby
+  # each line on its own, in a content handler that then writes "hello world" with Nginx.rputs
+  h = Nginx::Request.new.headers_out
+  h["Content-Length"] = "3"    # 2.7.13: Content-Length: 11 and Content-Length: 3   2.7.14: Content-Length: 11   3.0.0: Content-Length: 11, and a warn line
+  h["Content-Length"] = "11"   # 2.7.13: two Content-Length: 11 lines              2.7.14 and 3.0.0: Content-Length: 11
+  h["Content-Length"] = "-1"   # 2.7.13: Content-Length: 11 and Content-Length: -1  2.7.14: Content-Length: 11   3.0.0: ArgumentError
+  ```
+
+  ```ruby
+  # in mruby_output_header_filter_code of a location whose proxy_pass upstream sends a Content-Length
+  Nginx::Request.new.headers_out.delete "Content-Length"   # 3.0.0: no Content-Length, Transfer-Encoding: chunked (HTTP/1.1)
   ```
 
 `Dir.children`, `Dir#each_child`, `Dir.empty?` and the methods of
