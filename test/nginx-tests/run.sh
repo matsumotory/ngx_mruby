@@ -27,9 +27,13 @@
 #   summary.md                        counts and the lists of failed files
 #   only-mruby.txt, both.txt, only-plain.txt  the failed files by build
 #
-# The exit status is 0 when both builds were tested and the results were read,
-# also when test files failed; it is not 0 when a build, the fetch or prove
-# itself failed, or when a log has no result line of prove.
+# The exit status is 0 when both builds were tested, their results were read
+# and no test file fails with ngx_mruby only; a file that fails on both builds
+# does not change it. It is 1 when a test file fails on nginx with ngx_mruby
+# and not on nginx without it (only-mruby.txt): the check fails, and the
+# author of the change fixes it. It is not 0 either when a build, the fetch or
+# prove itself failed, or when a log is not a complete run of prove. The files
+# above are written in both of the first two cases.
 
 set -e
 
@@ -140,4 +144,11 @@ if [ -z "$head" ]; then
         head="unknown (not a git checkout)"
     fi
 fi
-perl "$HERE/compare.pl" "$OUT" "$suite_commit" "$NGINX_SRC_VER" "$head"
+status=0
+perl "$HERE/compare.pl" "$OUT" "$suite_commit" "$NGINX_SRC_VER" "$head" || status=$?
+case "$status" in
+    0) echo "run.sh: no test file fails with ngx_mruby only" ;;
+    1) echo "run.sh: test files fail with ngx_mruby and not without it: see $OUT/only-mruby.txt and $OUT/summary.md" >&2 ;;
+    *) echo "run.sh: compare.pl could not compare the results (exit status $status)" >&2 ;;
+esac
+exit "$status"

@@ -10,12 +10,26 @@
 #   OUT/both.txt         files that fail on both builds
 #   OUT/only-plain.txt   files that fail without ngx_mruby and not with it
 #
-# In GitHub Actions (GITHUB_ACTIONS=true) it also prints a warning annotation
-# for each file of only-mruby.txt. Exits non-zero when a result file is missing or
-# the two builds ran different sets of files.
+# In GitHub Actions (GITHUB_ACTIONS=true) it also prints an error annotation
+# for each file of only-mruby.txt. The exit status:
+#
+#   0  the results were compared and no file fails with ngx_mruby only
+#   1  the results were compared, the files above are written, and at least
+#      one file fails with ngx_mruby and not without it (only-mruby.txt):
+#      the check fails, as the author of a change has to fix it
+#   2  the results could not be compared: a result file is missing or
+#      empty, or the two builds ran different sets of files
 
 use strict;
 use warnings;
+
+# A failure to compare exits with 2, so that it is told from the result 1
+# (files that fail with ngx_mruby only).
+$SIG{__DIE__} = sub {
+	die @_ if $^S;
+	print STDERR @_;
+	exit 2;
+};
 
 my ($out, $suite_commit, $nginx_ver, $head) = @ARGV;
 die "usage: compare.pl OUT NGINX_TESTS_COMMIT NGINX_SRC_VER NGX_MRUBY_COMMIT\n"
@@ -142,8 +156,16 @@ print $md;
 
 if (($ENV{GITHUB_ACTIONS} // '') eq 'true') {
 	for my $file (@only_mruby) {
-		print "::warning title=nginx-tests::$file fails on nginx with"
+		print "::error title=nginx-tests::$file fails on nginx with"
 			. " ngx_mruby and not on nginx without it (see the job summary"
 			. " and the artifact nginx-tests)\n";
 	}
 }
+
+if (@only_mruby) {
+	print STDERR "compare.pl: " . scalar(@only_mruby) . " test file(s) fail"
+		. " on nginx with ngx_mruby and not on nginx without it ($out/only-mruby.txt): "
+		. join(', ', @only_mruby) . "\n";
+	exit 1;
+}
+exit 0;
