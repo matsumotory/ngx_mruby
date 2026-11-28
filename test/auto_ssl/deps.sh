@@ -88,7 +88,13 @@ start() {
     dir=$(cd "$1" && pwd)
 
     tarball="$dir/dehydrated-$DEHYDRATED_VERSION.tar.gz"
-    curl -sfL -o "$tarball" "https://github.com/dehydrated-io/dehydrated/releases/download/v$DEHYDRATED_VERSION/dehydrated-$DEHYDRATED_VERSION.tar.gz"
+    # GitHub's release download fails now and then (HTTP errors, a request
+    # that hangs; exit code 22 in run 45876232605). Each attempt has an
+    # upper bound, curl retries on any error, and -S prints the error of
+    # each attempt.
+    curl -sSfL --retry 4 --retry-all-errors --retry-delay 5 \
+        --connect-timeout 20 --max-time 60 \
+        -o "$tarball" "https://github.com/dehydrated-io/dehydrated/releases/download/v$DEHYDRATED_VERSION/dehydrated-$DEHYDRATED_VERSION.tar.gz"
     actual=$(sha256 "$tarball")
     if [ "$actual" != "$DEHYDRATED_SHA256" ]; then
         echo "dehydrated-$DEHYDRATED_VERSION.tar.gz: SHA-256 $actual, expected $DEHYDRATED_SHA256" >&2
