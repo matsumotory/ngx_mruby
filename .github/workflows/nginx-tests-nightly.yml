@@ -1,0 +1,123 @@
+name: nginx-tests-nightly
+
+# The nightly run of nginx's own test suite (nginx-tests) on the tip of
+# next. nginx-tests.yml, which only next has, builds nginx with and without
+# ngx_mruby and fails when a test file fails with ngx_mruby only
+# ("nginx-tests in CI" in docs/test/README.md on next). Pull requests do not
+# run it: their authors run test/nginx-tests/run.sh locally, and this
+# workflow keeps the nightly run.
+#
+# Why this file is on master: GitHub runs a schedule only from the workflow
+# file on the default branch (master), and master has no nginx-tests.yml.
+# So the job starts nginx-tests.yml on next (gh workflow run
+# nginx-tests.yml --ref next), waits for that run, and fails when the run
+# fails, so that a failure shows on this workflow, as valgrind-nightly.yml
+# does for test.yml. "Run workflow" of this file (gh workflow run
+# nginx-tests-nightly.yml --ref master) starts the same run.
+#
+# When it fails: open the run of nginx-tests.yml whose URL the job prints
+# (also in the job summary). Its summary lists the test files that fail
+# with ngx_mruby only, each also an error annotation, and the artifact
+# nginx-tests has the output of prove for both builds. When the job fails
+# before it prints that URL, the dispatch itself failed: read the log of
+# this job.
+on:
+  schedule:
+    # Every day at 19:23 UTC (04:23 JST), an hour after valgrind-nightly.yml
+    # (18:23 UTC), so that the two do not start at the same time.
+    - cron: '23 19 * * *'
+  workflow_dispatch:
+
+# One run at a time; a second one waits, so that two runs do not start
+# nginx-tests.yml on next at once.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  nginx-tests:
+    # Forks have their own schedule to keep, if any.
+    if: github.repository == 'matsumotory/ngx_mruby'
+    runs-on: ubuntu-24.04
+    # The passed runs of nginx-tests.yml in November 2026 took 8 to 10
+    # minutes from their creation to the end, and its job has a timeout of
+    # 60 minutes. The bound leaves room for that timeout and for a queue
+    # for runners.
+    timeout-minutes: 90
+    permissions:
+      actions: write # start nginx-tests.yml on next and read the run
+    steps:
+      - name: Run nginx-tests.yml on next and wait for it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          branch=next
+          since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          out=$(gh workflow run nginx-tests.yml --repo "${REPO}" --ref "${branch}")
+          echo "${out}"
+          # gh workflow run prints the URL of the run it started. When it
+          # does not (an older gh), the run is the newest manual run of
+          # nginx-tests.yml on the branch that was created since the
+          # dispatch.
+          id=
+          if [[ "${out}" =~ /actions/runs/([0-9]+) ]]; then
+            id=${BASH_REMATCH[1]}
+          fi
+          for _ in $(seq 1 30); do
+            if [ -n "${id}" ]; then
+              break
+            fi
+            sleep 10
+            id=$(gh run list --repo "${REPO}" --workflow nginx-tests.yml --branch "${branch}" --event workflow_dispatch \
+              --created ">=${since}" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          done
+          if [ -z "${id}" ]; then
+            echo "::error title=nginx-tests-nightly::no run of nginx-tests.yml on ${branch} appeared within 300 seconds of the dispatch"
+            exit 1
+          fi
+          # The next step cancels the run when this job is cancelled (by
+          # hand, or at its timeout). A file, because the
+          # step may be cancelled before its environment file is read.
+          echo "${id}" > "${RUNNER_TEMP}/dispatched-run"
+          # The URL is built from the id, without another call of the API,
+          # which can fail for a moment right after the dispatch (an HTTP
+          # 500 of "gh run view" failed a step of valgrind-nightly.yml once
+          # on 2026-10-31).
+          url="https://github.com/${REPO}/actions/runs/${id}"
+          echo "run of nginx-tests.yml on ${branch}: ${url}"
+          echo "nginx-tests.yml on \`${branch}\`: ${url}" >> "${GITHUB_STEP_SUMMARY}"
+          # "gh run watch" ends when the run ends, or earlier when a call of
+          # the API fails. The result is read afterwards, with retries, so
+          # that a failed call does not fail this job and the run decides.
+          gh run watch "${id}" --repo "${REPO}" --interval 60 > /dev/null || echo "gh run watch exited with $?; reading the result of the run"
+          result=
+          for _ in $(seq 1 90); do
+            state=$(gh run view "${id}" --repo "${REPO}" --json status,conclusion --jq '"\(.status) \(.conclusion)"' 2>/dev/null) || state=
+            case "${state}" in
+              "completed "*) result=${state#completed }; break ;;
+            esac
+            sleep 60
+          done
+          if [ "${result}" != success ]; then
+            echo "::error title=nginx-tests-nightly::the run of nginx-tests.yml on ${branch} did not pass (result: '${result:-unknown after 90 minutes}'): ${url}"
+            exit 1
+          fi
+          echo "the run of nginx-tests.yml on ${branch} passed: ${url}"
+      - name: Cancel the run of nginx-tests.yml when this job is cancelled
+        if: ${{ cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -s "${RUNNER_TEMP}/dispatched-run" ]; then
+            id=$(cat "${RUNNER_TEMP}/dispatched-run")
+            echo "cancelling https://github.com/${REPO}/actions/runs/${id}"
+            gh run cancel "${id}" --repo "${REPO}" || true
+          fi

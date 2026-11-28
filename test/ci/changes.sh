@@ -41,8 +41,11 @@
 #              everything until a category names it). test.yml runs the
 #              four cells of build standard (the cell under valgrind and
 #              the sanitizer cell among them), and perf, and on next soak;
-#              codeql.yml scans src/ and mrbgems/. On next, nginx-tests.yml
-#              and examples.yml run by their own path filters.
+#              codeql.yml scans src/ and mrbgems/. On next, examples.yml
+#              runs by its own path filter, and pull requests do not run
+#              nginx-tests.yml: the author runs test/nginx-tests/run.sh
+#              locally for a change that gives code true or touches test.sh
+#              or test/nginx-tests/.
 #   tests      test/, test.sh and .github/workflows/test.yml. test.yml runs
 #              the four cells of build standard.
 #   docs       docs/, the Markdown files at the top, AUTHORS, LEGAL,
