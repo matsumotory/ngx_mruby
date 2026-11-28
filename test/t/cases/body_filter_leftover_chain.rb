@@ -46,4 +46,24 @@ end
   end
 end
 
+# A proxied response that goes out in one write, with the leftover Nginx.rputs
+# and a body filter that prepends. The upstream sends its empty last buffer
+# after the body; if the filter runs the prepend again on it, a second "pre:"
+# is produced after the framed response, so the body is longer than its
+# Content-Length. The response must be exactly "pre:" + 4000 bytes.
+[
+  ['a one-write proxied response with a prepending body filter', '/proxy_leftover_prepend', '1'],
+  ['the same without a header filter', '/proxy_leftover_prepend_body_only', nil],
+].each do |name, path, header_filter_runs|
+  t.assert('body filter leftover chain prepend', name) do
+    status, line, headers, body = leftover_chain_request(path)
+    t.assert_equal 'EOF', status
+    t.assert_equal 'HTTP/1.1 200 OK', line
+    t.assert_equal header_filter_runs, headers['x-header-filter-runs']
+    t.assert_equal '4004', headers['content-length']
+    t.assert_equal 4004, body.bytesize
+    t.assert_equal 'pre:' + 'a' * 4000, body
+  end
+end
+
 t.report
