@@ -111,8 +111,11 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#880](https://github.com/matsumotory/ngx_mruby/pull/880)
-  (`next`), below. `v2.x` mirrors `master`.
+  requests are [#882](https://github.com/matsumotory/ngx_mruby/pull/882)
+  (`next`), below, and
+  [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (`master`),
+  which retries the download of dehydrated in `test/auto_ssl/deps.sh`.
+  `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.2: the tag `v3.0.0-alpha.2` is
   on `2d87575b0`, the merge of the check before the tag (#877), and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.2)
@@ -649,6 +652,15 @@
   when it stops before the comparison, `self-test.sh` checks both, and
   `nginx-tests.yml` runs by dispatch only until a workflow on `master`
   starts it nightly (the row of "Queue").
+- [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (`next`, writes this entry): the entry
+  `nginx-environment-at-exit` of `test/valgrind.supp` also matches
+  indirectly lost blocks. nginx 1.30.6, built with `--with-http_v3_module`
+  since #871, adds `NGINX_BPF_MAPS=` to the environment of every worker
+  even when `quic_bpf` is off, and its copy, which only the suppressed
+  environment array points to, failed the `workers` cases in the four
+  cells of 1.30.6 of the nightly runs 45876222175 and 46049657554. It
+  took the current `next` and was marked ready on 2026-11-28; the leading
+  session continues it.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
