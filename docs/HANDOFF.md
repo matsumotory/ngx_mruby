@@ -828,7 +828,10 @@
   `nginx-tests-nightly.yml` on `master` starts the nightly run, in place
   of the dispatches by hand until #887. The entry of #676 there says
   that `nginx-tests` runs only on "Run workflow", not on pull requests
-  (#880), and the row of #882 here drops "writes this entry".
+  (#880); that entry and the list of the other workflows in both test
+  READMEs say that `examples` and `zizmor` run on pull requests and on
+  "Run workflow", not on pushes; and the row of #882 here drops "writes
+  this entry".
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829

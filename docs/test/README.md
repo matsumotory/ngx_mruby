@@ -400,7 +400,8 @@ CI](#valgrind-in-ci)). The other workflows decide on their own when they
 run: `site` deploys on every push to `next`, and `codeql` scans pushes to
 `master` and `next` that change `src/`, `mrbgems/`, the workflows or its
 configuration ([CodeQL](#codeql)); `examples` and `zizmor` run on pull
-requests only, and `nginx-tests` on "Run workflow" only, which
+requests and on "Run workflow", not on pushes, and `nginx-tests` on "Run
+workflow" only, which
 `nginx-tests-nightly.yml` on `master` starts on `next` every night
 ([nginx-tests in CI](#nginx-tests-in-ci)). After a deploy, the `verify-live` job of `site`
 reads the GitHub Pages environment and deployment through the REST API with
