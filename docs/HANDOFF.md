@@ -710,7 +710,7 @@
   `nginx-tests.yml` runs by dispatch only until a workflow on `master`
   starts it nightly (the row of "Queue"). It was merged on 2026-11-27 at
   19:44 JST as `5191c8e83`.
-- [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (`next`, writes this entry): the entry
+- [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (`next`): the entry
   `nginx-environment-at-exit` of `test/valgrind.supp` also matches
   indirectly lost blocks. nginx 1.30.6, built with `--with-http_v3_module`
   since #871, adds `NGINX_BPF_MAPS=` to the environment of every worker
@@ -826,7 +826,9 @@
   `docs/ja/test/README.md`, and the entry of #602 under "Build and test
   changes" of `docs/releases/v3.0.0.md` and `.ja.md` say that
   `nginx-tests-nightly.yml` on `master` starts the nightly run, in place
-  of the dispatches by hand until #887.
+  of the dispatches by hand until #887. The entry of #676 there says
+  that `nginx-tests` runs only on "Run workflow", not on pull requests
+  (#880), and the row of #882 here drops "writes this entry".
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
