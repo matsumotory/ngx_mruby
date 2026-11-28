@@ -30,7 +30,7 @@ import { elements, hasClass, readHtml, textContent, visibleText } from './lib/ht
 import { loadSample, specFromProps } from './lib/samples.mjs';
 import { HOME_PAGES } from './lib/site.mjs';
 import { latestPrereleaseTag } from './lib/release-state.mjs';
-import { measuredMonth, readPerfReport } from './lib/perf-report.mjs';
+import { HOME_PERF_REPORT, measuredMonth, readPerfReport } from './lib/perf-report.mjs';
 
 const SITE = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -91,7 +91,7 @@ function main() {
     if (JSON.stringify(releaseLinks.map((e) => e.properties.href)) !== JSON.stringify(expected)) problems.push(`${where}: the first line of the status links to ${releaseLinks.map((e) => e.properties?.href).join(', ') || 'no release'}, expected ${expected.join(', ') || 'none'} (the newest pre-release of the git tags)`);
     if (prerelease && !textContent(statusLines[0]).includes(prerelease.slice(1))) problems.push(`${where}: the first line of the status does not name ${prerelease.slice(1)}`);
     // The measured change: its month, method and source beside the numbers.
-    const report = readPerfReport(path.join(SITE, 'src', 'data', 'perf-v3.0.0-alpha.2.txt'));
+    const report = readPerfReport(path.join(SITE, 'src', 'data', HOME_PERF_REPORT));
     const measured = elements(tree).find((e) => hasClass(e, 'now-measured'));
     if (!measured) problems.push(`${where}: no .now-measured with the measured change of ${report.head.tag}`);
     else {
