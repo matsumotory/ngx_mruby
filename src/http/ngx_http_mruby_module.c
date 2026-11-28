@@ -2041,6 +2041,21 @@ static ngx_int_t ngx_http_mruby_body_filter_handler_inner(ngx_http_request_t *r,
   if (ctx->phase == NGX_HTTP_MRUBY_FILTER_PASS) {
     return ngx_http_next_body_filter(r, in);
   }
+  // The response is already framed and sent once r->header_sent is set, which
+  // the header of a location with a body filter reaches only through
+  // ngx_mrb_finalize_body_filter (the mruby header filter holds it until then).
+  // So r->header_sent is 0 on every legitimate first or read-continuation call
+  // and 1 only on a spurious later call with a fresh ctx: the empty last buffer
+  // that an upstream's ngx_http_send_special sends after the body, when an
+  // earlier handler's Nginx.rputs leftover dropped the module ctx and no PASS
+  // ctx was made (a response that went out in one write). Pass that call on
+  // instead of reading an empty body and running the body filter code again:
+  // a code that makes bytes from an empty body (a prepend or append) would
+  // otherwise produce them here, after the response was already framed and sent.
+  if (r->header_sent) {
+    ctx->phase = NGX_HTTP_MRUBY_FILTER_PASS;
+    return ngx_http_next_body_filter(r, in);
+  }
   ctx->phase = NGX_HTTP_MRUBY_FILTER_PROCESS;
 
   if ((rc = ngx_http_mruby_read_body(r, in, ctx)) != NGX_OK) {
