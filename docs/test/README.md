@@ -950,8 +950,9 @@ ACME test server [Pebble](https://github.com/letsencrypt/pebble) and the
 - `pebble-challtestsrv` as Pebble's DNS server on `127.0.0.1:8053` (its
   management API on `127.0.0.1:8055`), which answers every A query with
   `127.0.0.1` and no AAAA query, so that Pebble connects to the test nginx;
-- dehydrated 0.7.2, downloaded from its GitHub release and checked against
-  its SHA-256.
+- dehydrated 0.7.2, downloaded from its GitHub release (each attempt at
+  most 60 seconds, retried up to four times on any error) and checked
+  against its SHA-256.
 
 The services run in Docker containers whose images the script pins by
 digest. They use the host network by default, because Pebble has to connect
