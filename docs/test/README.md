@@ -344,7 +344,11 @@ build and deploy of the site on `next` after every push to `master`,
 `codeql` scans pushes to `master` and `next` that change `src/`,
 `mrbgems/`, the workflows or its configuration ([CodeQL](#codeql)), and
 `zizmor` and `gem-heads` run on ready pull requests (and `gem-heads`
-weekly), and `site-v2` only on "Run workflow".
+weekly), `site-v2` only on "Run workflow", and `nginx-tests-nightly`
+every day at 19:23 UTC (04:23 JST) and on "Run workflow": it starts
+`nginx-tests.yml`, which only `next` has, on `next` (`gh workflow run
+nginx-tests.yml --ref next`), waits for that run and fails when it fails,
+since GitHub runs a schedule only from the workflow files on `master`.
 
 `ci-ok` passes a skipped `build`, `perf` or `files` job only when `changes`
 passed and decided that the run does not need it. For `perf`, which runs
