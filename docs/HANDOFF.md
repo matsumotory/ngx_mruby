@@ -1,9 +1,11 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-28 (17:13 JST)
+## State as of 2026-11-28 (18:33 JST)
 
-- Heads: `master` is `a09385e24`, the merge of
-  [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (2026-11-28 16:59 JST),
+- Heads: `master` is `2ff1ea053`, the merge of
+  [#887](https://github.com/matsumotory/ngx_mruby/pull/887) (2026-11-28 18:20 JST),
+  below; before it, `a09385e24`, the merge of
+  [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (16:59 JST),
   below; before it, `bdd031850`, the merge of
   [#884](https://github.com/matsumotory/ngx_mruby/pull/884) (16:58 JST), below;
   before it, `93b0fcfde`, the fix for 2.7.15 (merged from the advisory's
@@ -57,8 +59,10 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `b50be3fb8`, the merge of
-  [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (2026-11-28 17:28 JST),
+  all below. `next` is `0aadf3f40`, the merge of
+  [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (2026-11-28 17:40 JST),
+  below; before it, `b50be3fb8`, the merge of
+  [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (17:28 JST),
   below; before it, `e098a48e0`, the merge of
   [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (17:11 JST),
   below; before it, `6c8e05ba6`, the fix for 3.0.0-alpha.3 (merged from
@@ -125,7 +129,7 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (`next`),
+  request is [#888](https://github.com/matsumotory/ngx_mruby/pull/888) (`next`),
   below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.3: the tag `v3.0.0-alpha.3` is
   on `6c8e05ba6`, the merge of the body filter fix from the advisory's
@@ -795,14 +799,34 @@
   instructions per request; the output body filter +2.64%), which
   `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs` names. It was
   merged on 2026-11-28 at 17:28 JST as `b50be3fb8`.
-- [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (`next`, writes this entry): merges `master`
+- [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (`next`): merges `master`
   at `a09385e24` (the 2.7.15 fix `93b0fcfde`, #883 and #884) into
   `next`. The fix is on `next` already from the same advisory's merge
   (`6c8e05ba6`), and git merges the two copies of the guard and of the
   test rows into one. `test/auto_ssl/` and the section "Testing the
   auto-ssl mrbgem" of `docs/test/README.md` are not on `next`, so both
   conflicts keep `next`'s side. The merged tree differs from `next` only
-  in `docs/releases/v2.7.15.md` and `.ja.md`.
+  in `docs/releases/v2.7.15.md` and `.ja.md`. It was merged on
+  2026-11-28 at 17:40 JST as `0aadf3f40`.
+- [#887](https://github.com/matsumotory/ngx_mruby/pull/887) (`master`): adds
+  `.github/workflows/nginx-tests-nightly.yml`, which starts
+  `nginx-tests.yml` on `next` every day at 19:23 UTC (04:23 JST) and on
+  "Run workflow", waits for that run and fails when that run fails, and moves
+  the comment of the category `code` in `test/ci/changes.sh` to the text
+  of `next`. It was merged on 2026-11-28 at 18:20 JST as `2ff1ea053`.
+  The first run was a "Run workflow" on `master` right after the merge:
+  [run 46129998426](https://github.com/matsumotory/ngx_mruby/actions/runs/46129998426)
+  of `nginx-tests-nightly` started
+  [run 46130007844](https://github.com/matsumotory/ngx_mruby/actions/runs/46130007844)
+  of `nginx-tests.yml` on `next` at `0aadf3f40`; both passed, and the run
+  of `nginx-tests.yml` took 9 minutes 30 seconds.
+- [#888](https://github.com/matsumotory/ngx_mruby/pull/888) (`next`, writes this entry): the comment at the top of
+  `.github/workflows/nginx-tests.yml`, "nginx-tests in CI" and the list of
+  the other workflows in `docs/test/README.md` and
+  `docs/ja/test/README.md`, and the entry of #602 under "Build and test
+  changes" of `docs/releases/v3.0.0.md` and `.ja.md` say that
+  `nginx-tests-nightly.yml` on `master` starts the nightly run, in place
+  of the dispatches by hand until #887.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1890,7 +1914,7 @@ Taken up and still open: none.
 | The migration guide (`docs/migration/README.md` and `docs/ja/migration/README.md`) links to every entry of "Behavior changes" of `docs/releases/v3.0.0.md`, as "File names" in `docs/releases/README.md` says: it has no item for #672, #751, #758, #789, #796, #799, #847, #848 and #849, entries that `v3.0.0-alpha.1` already had (found in the review of [#877](https://github.com/matsumotory/ngx_mruby/pull/877)) | `next` | Done in [#878](https://github.com/matsumotory/ngx_mruby/pull/878): the guide links to all 79 entries |
 | `docs/releases/v3.0.0.ja.md`: lines that put a Japanese clause in half-width parentheses; "The Japanese file" in `docs/releases/README.md` turns such a clause into a clause or a sentence of its own (#862 left them, see its body) | `next` | Done in [#864](https://github.com/matsumotory/ngx_mruby/pull/864), which rewrites the 33 lines that the tip of `next` had (#862 counted 22) with the meaning of the English entries |
 | nginx-tests required: `run.sh` fails when a test file fails on the build with ngx_mruby and not on the build without it, the author of a code change runs it locally before the PR is ready, and PRs no longer run the workflow (the decision of 2026-11-27 above) | `next` | Done in #880 |
-| The nightly run of nginx-tests on `next`: a workflow on `master` (a job in `valgrind-nightly.yml`, or a workflow of its own) that starts `nginx-tests.yml` on `next` by `gh workflow run nginx-tests.yml --ref next` on a schedule and fails when that run fails, as `valgrind-nightly.yml` starts `test.yml`; the same PR updates the comment of the category `code` in `master`'s `test/ci/changes.sh` (lines 44 and 45, which still say that `nginx-tests.yml` runs by its path filter) to the text of `next` | `master` | Ready to start after #880 is merged |
+| The nightly run of nginx-tests on `next`: a workflow on `master` (a job in `valgrind-nightly.yml`, or a workflow of its own) that starts `nginx-tests.yml` on `next` by `gh workflow run nginx-tests.yml --ref next` on a schedule and fails when that run fails, as `valgrind-nightly.yml` starts `test.yml`; the same PR updates the comment of the category `code` in `master`'s `test/ci/changes.sh` (lines 44 and 45, which still say that `nginx-tests.yml` runs by its path filter) to the text of `next` | `master` | Done in [#887](https://github.com/matsumotory/ngx_mruby/pull/887): `nginx-tests-nightly.yml` starts it every day at 19:23 UTC; its first run (by hand, run 46129998426) started run 46130007844 of `nginx-tests.yml` on `next`, and both passed. [#888](https://github.com/matsumotory/ngx_mruby/pull/888) updates the documents of `next` |
 | The `perf` job in the `needs` of `ci-ok`, and the "In CI" text of `docs/test/README.md` aligned with the rule of AGENTS.md "Design principles", under which a session does not merge while the job reports `FAIL` or `ERROR`. On `next`, [#794](https://github.com/matsumotory/ngx_mruby/pull/794) does it: `ci-ok` needs `perf`, and a `FAIL` that the owner accepted on a pull request passes through a line with the new condition `pull-request` in `test/perf/accepted.txt`. The comparison judges the Ir per request without the GC and without the constant lookups that miss the constant cache of mruby, which made the `stream_sleep` `FAIL` of #766 that another run on the same commits did not repeat, except where the head clears that cache more often, or clears it and misses more lookups than the base ([#795](https://github.com/matsumotory/ngx_mruby/pull/795)); then with the lookups counted. On `master`, [#865](https://github.com/matsumotory/ngx_mruby/pull/865) does the same: `ci-ok` needs `perf`, with the `pull-request` condition and an `accepted.txt` that has no line; `master` judges the number without GC, since its mruby 3.3.0 has no constant cache | `next`, then `master` | `next`: done by [#794](https://github.com/matsumotory/ngx_mruby/pull/794). `master`: done by [#865](https://github.com/matsumotory/ngx_mruby/pull/865) |
 | Soak: record `Pss` and `Private_Dirty` from `/proc/<pid>/smaps_rollup` beside `VmRSS`, then bound their slope over more windows, set after measuring (the Pillar E row on memory accounting). [#867](https://github.com/matsumotory/ngx_mruby/pull/867) samples after each of 6 windows (`SOAK_WINDOWS`) and bounds the least-squares slope of both values at 8 bytes per request (`SOAK_SLOPE_B`), from runs on aarch64; the `soak` job sets `SOAK_REQUIRE_SMAPS_ROLLUP=1`. The `VmRSS` limits are unchanged ("Thresholds and calibration" of the soak test in `docs/test/README.md`) | `next` | Done in [#867](https://github.com/matsumotory/ngx_mruby/pull/867) |
 | Soak and perf for stream: the normal TCP `stream_sleep` scenario checks exact response bytes and EOF, observes `stream_timers` and `stream_fibers`, and collects the stream VM before memory samples. The performance build includes stream and counts completed sessions (section 7 of [the core stabilization proposal](proposals/archive/core-stabilization.md)) | `next` | Merged in [#758](https://github.com/matsumotory/ngx_mruby/pull/758) as `8beaaa381`; local checks, independent review, CI, publication verification and cleanup passed |
