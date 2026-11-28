@@ -1387,11 +1387,12 @@ event arrays that
 `ngx_event_process_init()` allocates in a worker process (the nginx of
 `test/t/cases/_workers.rb`, "Several workers and reloads" above). The
 environment is an array, definitely lost in every cell (8 bytes, or 16
-bytes with nginx 1.30.6), and a copy of each variable whose value nginx
-sets itself, which only the array points to. nginx 1.30.6, built with
-`--with-http_v3_module` as `test.sh` builds it, sets one such variable,
-`NGINX_BPF_MAPS`, also when `quic_bpf` is off, and valgrind reports its
-copy as indirectly lost (16 bytes) in each worker of
+bytes with nginx 1.30.6), and a copy of each entry of the form
+`NAME=value` (an `env NAME=value;` of the configuration, or a variable
+that nginx sets itself), which only the array points to. nginx 1.30.6,
+built with `--with-http_v3_module` as `test.sh` builds it, sets one such
+variable, `NGINX_BPF_MAPS`, also when `quic_bpf` is off, and valgrind
+reports its copy as indirectly lost (16 bytes) in each worker of
 `test/t/cases/_workers.rb` (the nightly runs
 [45876222175](https://github.com/matsumotory/ngx_mruby/actions/runs/45876222175)
 and
