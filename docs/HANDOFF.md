@@ -1,8 +1,14 @@
 # Handoff: the state of the work
 
-## State as of 2026-11-27 (19:29 JST)
+## State as of 2026-11-28 (17:13 JST)
 
-- Heads: `master` is `06725f0cc`, the merge of
+- Heads: `master` is `a09385e24`, the merge of
+  [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (2026-11-28 16:59 JST),
+  below; before it, `bdd031850`, the merge of
+  [#884](https://github.com/matsumotory/ngx_mruby/pull/884) (16:58 JST), below;
+  before it, `93b0fcfde`, the fix for 2.7.15 (merged from the advisory's
+  private fork at 16:32 JST) and the tag `v2.7.15`, below; before it,
+  `06725f0cc`, the merge of
   [#873](https://github.com/matsumotory/ngx_mruby/pull/873) (2026-11-26
   18:53 JST), below; before it, `8965b836f`, the merge of
   [#872](https://github.com/matsumotory/ngx_mruby/pull/872) (12:39 JST), below; before it, `cde3facbc`, the fix for
@@ -51,7 +57,13 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `bf7cfa5a1`, the merge of
+  all below. `next` is `e098a48e0`, the merge of
+  [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (2026-11-28 17:11 JST),
+  below; before it, `6c8e05ba6`, the fix for 3.0.0-alpha.3 (merged from
+  the advisory's private fork at 16:32 JST) and the tag `v3.0.0-alpha.3`,
+  below; before it, `5191c8e83`, the merge of
+  [#880](https://github.com/matsumotory/ngx_mruby/pull/880) (2026-11-27 19:44 JST),
+  below; before it, `bf7cfa5a1`, the merge of
   [#881](https://github.com/matsumotory/ngx_mruby/pull/881) (2026-11-27
   19:29 JST), below; before it, `91209c48c`, the merge of
   [#879](https://github.com/matsumotory/ngx_mruby/pull/879) (17:02 JST),
@@ -111,12 +123,34 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  requests are [#882](https://github.com/matsumotory/ngx_mruby/pull/882)
-  (`next`), below, and
-  [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (`master`),
-  which retries the download of dehydrated in `test/auto_ssl/deps.sh`.
-  `v2.x` mirrors `master`.
-  The latest pre-release is 3.0.0-alpha.2: the tag `v3.0.0-alpha.2` is
+  request is [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (`next`),
+  below. `v2.x` mirrors `master`.
+  The latest pre-release is 3.0.0-alpha.3: the tag `v3.0.0-alpha.3` is
+  on `6c8e05ba6`, the merge of the body filter fix from the advisory's
+  private fork, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.3)
+  was published as a pre-release on 2026-11-28 at 16:35 JST. Its body
+  starts, in English and in Japanese, with "What 3.0.0-alpha.3 brings"
+  and "What comes next" (the body filter fix, the comparison with
+  `v3.0.0-alpha.2` of the check before the tag with its table, nginx's
+  own test suite before a pull request is ready (#880), the local trial
+  of `examples/start` and the migration guide, and the same planned
+  parts as alpha.2), then copies the one entry of "Behavior changes"
+  added since `v3.0.0-alpha.2` and says that the other change of the
+  notes is the entry of #602 under "Build and test changes" that #880
+  rewrote ("The GitHub release" in `docs/releases/README.md`). Right
+  after the release, `site.yml` ran on `next`
+  ([run 46121960076](https://github.com/matsumotory/ngx_mruby/actions/runs/46121960076),
+  success); the home page prints `Latest release: v2.7.15`. The push of
+  the tag ran the whole build matrix on `6c8e05ba6`
+  ([run 46121941442](https://github.com/matsumotory/ngx_mruby/actions/runs/46121941442),
+  success). The published advisory
+  [GHSA-5qjv-293c-64f8](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-5qjv-293c-64f8)
+  lists `3.0.0-alpha.1` and `3.0.0-alpha.2` as affected and
+  `3.0.0-alpha.3` as patched for the 3.x line, as for 2.x `2.7.6` to
+  `2.7.14` and `2.7.15`; the session added its id to the release body
+  after it was published, and #885 adds it to `v3.0.0.md` and `.ja.md`.
+  The previous pre-release is 3.0.0-alpha.2: the tag `v3.0.0-alpha.2` is
   on `2d87575b0`, the merge of the check before the tag (#877), and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.2)
   was published as a pre-release on 2026-11-27 at 15:13 JST. Its body
@@ -141,7 +175,7 @@
   [GHSA-2cf7-qh69-j29q](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-2cf7-qh69-j29q)
   lists `3.0.0-alpha.1` as affected and `3.0.0-alpha.2` as patched for
   the 3.x line, as for 2.x `2.7.13` and older and `2.7.14`.
-  The previous pre-release is 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
+  Before it, 3.0.0-alpha.1: the tag `v3.0.0-alpha.1` is
   on `574a0e4f6`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v3.0.0-alpha.1)
   was published as a pre-release on 2026-11-25 at 13:17 JST. The two
@@ -161,7 +195,24 @@
   ([run 45545779294](https://github.com/matsumotory/ngx_mruby/actions/runs/45545779294)):
   the 9 cells, `soak` and `ci-ok` passed (`perf` runs on pull requests
   only).
-  The latest stable release is 2.7.14:
+  The latest stable release is 2.7.15:
+  the tag `v2.7.15` is on `93b0fcfde`, the merge of the body filter fix
+  from the advisory's private fork, and
+  [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.15)
+  was published on 2026-11-28 at 16:35 JST, with the release notes
+  `docs/releases/v2.7.15.md` and `.ja.md`, in the form of "The GitHub
+  release" in `docs/releases/README.md`, and the published advisory
+  [GHSA-5qjv-293c-64f8](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-5qjv-293c-64f8)
+  (published 2026-11-28 at 16:42 JST); the session then added the
+  published advisory id to the release body, and #884 added it to the
+  two release-note files (merged at 16:58 JST). Right after the release,
+  `site.yml` ran on `next`
+  ([run 46121960076](https://github.com/matsumotory/ngx_mruby/actions/runs/46121960076),
+  success), and the home page of ngx.mruby.org names v2.7.15
+  (`Latest release: v2.7.15`). The push of the tag ran the whole build
+  matrix on `93b0fcfde`
+  ([run 46121939429](https://github.com/matsumotory/ngx_mruby/actions/runs/46121939429),
+  success). Before it, 2.7.14:
   the tag `v2.7.14` is on `cde3facbc`, and
   [the release](https://github.com/matsumotory/ngx_mruby/releases/tag/v2.7.14)
   was published on 2026-11-26 at 03:33 JST, with the release notes
@@ -644,14 +695,15 @@
   (`HOME_SOURCES`); and the checks measure short last lines of Japanese
   text on headings only (the decision of 2026-11-27 in "Decisions"). It
   was merged on 2026-11-27 at 19:29 JST as `bf7cfa5a1`.
-- [#880](https://github.com/matsumotory/ngx_mruby/pull/880) (`next`, writes this entry): nginx-tests runs locally
+- [#880](https://github.com/matsumotory/ngx_mruby/pull/880) (`next`): nginx-tests runs locally
   before a code pull request is marked ready, and nightly instead of in
   the CI of each pull request (the decision of 2026-11-27 in
   "Decisions"): `test/nginx-tests/compare.pl` exits 1 when a test file
   fails on nginx with ngx_mruby and not without it, `run.sh` exits 3
   when it stops before the comparison, `self-test.sh` checks both, and
   `nginx-tests.yml` runs by dispatch only until a workflow on `master`
-  starts it nightly (the row of "Queue").
+  starts it nightly (the row of "Queue"). It was merged on 2026-11-27 at
+  19:44 JST as `5191c8e83`.
 - [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (`next`, writes this entry): the entry
   `nginx-environment-at-exit` of `test/valgrind.supp` also matches
   indirectly lost blocks. nginx 1.30.6, built with `--with-http_v3_module`
@@ -659,8 +711,87 @@
   even when `quic_bpf` is off, and its copy, which only the suppressed
   environment array points to, failed the `workers` cases in the four
   cells of 1.30.6 of the nightly runs 45876222175 and 46049657554. It
-  took the current `next` and was marked ready on 2026-11-28; the leading
-  session continues it.
+  was merged on 2026-11-28 at 17:11 JST as `e098a48e0`.
+- 2.7.15 (`master`, the fix merged from the advisory's private fork as
+  `93b0fcfde`, "Merge commit from fork", on 2026-11-28 at 16:32 JST): an
+  `mruby_output_body_filter(_code)` no longer runs a second time on the
+  empty last buffer that an upstream sends after a response whose
+  length is known, after an earlier handler left `Nginx.rputs` or
+  `Nginx.echo` output and declined, so a body filter that adds to an
+  empty body sends no bytes past the response's `Content-Length`. Its
+  test is two rows of `test/t/cases/body_filter_leftover_chain.rb` with
+  two locations of `test/conf/conf.d/90-body-filter-leftover-chain.conf`.
+  It adds the entry under "Behavior changes: read before upgrading" of
+  `docs/releases/v2.7.15.md` and `.ja.md`. The published advisory is
+  [GHSA-5qjv-293c-64f8](https://github.com/matsumotory/ngx_mruby/security/advisories/GHSA-5qjv-293c-64f8).
+- The check before the 2.7.15 tag, recorded here because it needed no
+  pull request ("Before the tag" in `docs/releases/README.md`): the pull
+  requests merged into `master` after `v2.7.14` were #872 (the "Fixes"
+  entry of `docs/releases/v2.7.15.md` and `.ja.md`, which also set
+  `MODULE_VERSION` to `2.7.15`), #873 (the advisory id of the 2.7.14
+  notes; no entry, documentation only) and the 2.7.15 fix (`93b0fcfde`,
+  the entry under "Behavior changes: read before upgrading"); #883 and
+  #884 merged after the tag. The English and the Japanese files have
+  the same sections and entries. The callgrind comparison of `v2.7.14`
+  (`cde3facbc`) with `06725f0cc`, the tip before the fix (`sh
+  test/perf/compare.sh`, N=20000 WARMUP=2000, run locally in an
+  `ubuntu:22.04` container on an arm64 Mac; the session's local record,
+  not published elsewhere), has all 14 scenarios `ok`; the largest change is `proxy_stream_plain_50`, which varies with
+  response-arrival timing, 54300 → 54333 Ir per request (+0.06%). The
+  fix itself was compared with `06725f0cc` in the private pull request:
+  every scenario `ok`, `filter`, the path it touches, 13497 → 13500 Ir
+  per request without GC (+0.02%). Because the fix is published through
+  a private fork, every cell of the build matrix ran on `06725f0cc`
+  before the fix
+  ([run 45981598660](https://github.com/matsumotory/ngx_mruby/actions/runs/45981598660),
+  `workflow_dispatch`, success); the fix was checked locally on the tree
+  that was published (the suite with the static module on nginx 1.31.8
+  and 1.26.3 and with the dynamic module on 1.30.6, the sanitizer build
+  and valgrind), as "Security fixes" in `docs/releases/README.md` asks,
+  and the tree of `93b0fcfde` is that tree.
+- 3.0.0-alpha.3 (`next`, the same fix merged from the advisory's
+  private fork as `6c8e05ba6`, "Merge commit from fork", on 2026-11-28 at
+  16:32 JST), with its entry under "Behavior changes: read before
+  upgrading" of `docs/releases/v3.0.0.md` and `.ja.md`.
+- The check before the 3.0.0-alpha.3 tag, recorded here because it
+  needed no pull request ("Before the tag" in `docs/releases/README.md`):
+  the pull requests merged into `next` after `v3.0.0-alpha.2` were #878
+  (the migration guide; no entry), #879 and #881 (the home pages; no
+  entry), #880 (it rewrites the entry of #602 under "Build and test
+  changes") and the fix (`6c8e05ba6`, the entry under "Behavior changes:
+  read before upgrading"); #882 merged after the tag. The callgrind
+  comparison of `v3.0.0-alpha.2` (`2d87575b0`) with `5191c8e83`, the tip
+  before the fix, has all 16 scenarios `ok`; the largest change is
+  `responses_stream_plain_50`, 55312 → 55339 Ir per request (+0.05%).
+  The fix itself was compared with `5191c8e83` in the private pull
+  request: every scenario `ok`, the largest change +0.02% (`filter`
+  12852 → 12855 and `sub_request` 42245 → 42252 Ir per request without
+  GC and the missed constant lookups). Every cell of the build matrix
+  ran on `5191c8e83` before the fix
+  ([run 45984715116](https://github.com/matsumotory/ngx_mruby/actions/runs/45984715116),
+  `workflow_dispatch`, success); the fix was checked locally on the tree
+  that was published (the suite with the static module on nginx 1.31.8
+  and 1.30.6 and with the dynamic module on 1.30.6, the sanitizer build,
+  valgrind, the soak test, `examples/start` and nginx-tests), and the
+  tree of `6c8e05ba6` is that tree.
+- [#883](https://github.com/matsumotory/ngx_mruby/pull/883) (`master`): the download of dehydrated in
+  `test/auto_ssl/deps.sh` retries (`--retry 4 --retry-all-errors`) and
+  bounds each attempt (`--max-time 60`), after the nightly run
+  45876232605 on `master` failed when one request of GitHub's release
+  download returned an error. It was merged on 2026-11-28 at 16:59 JST as
+  `a09385e24`.
+- [#884](https://github.com/matsumotory/ngx_mruby/pull/884) (`master`): links the published advisory
+  GHSA-5qjv-293c-64f8 from the entry of the body filter fix in
+  `docs/releases/v2.7.15.md` and `.ja.md`. It was merged on 2026-11-28 at
+  16:58 JST as `bdd031850`.
+- [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (`next`, writes this entry): links the same
+  advisory from the entry in `docs/releases/v3.0.0.md` and `.ja.md`,
+  records 2.7.15 and 3.0.0-alpha.3 here, and moves the home pages to
+  3.0.0-alpha.3: the section on the newest pre-release of 3.0 reads
+  `site/src/data/perf-v3.0.0-alpha.3.txt`, the comparison of
+  `v3.0.0-alpha.3` with `v2.7.15` (15 of 16 scenarios run fewer
+  instructions per request; the output body filter +2.64%), which
+  `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs` names.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
@@ -1725,7 +1856,7 @@ Taken up and still open: none.
 
 | Follow-up | Target branch | Waits for |
 |---|---|---|
-| The pages of the site that present v3 (the home page and its use cases) show what 3.0 gives now, from the body of `v3.0.0-alpha.1`: the measured instructions per request against 2.7.13, mruby 4.1, the defined behavior of handlers that wait, `Nginx::Request#store` and `mruby_variable`, beside the use cases and their status ("Presenting v3" in AGENTS.md) | `next` | Done in [#869](https://github.com/matsumotory/ngx_mruby/pull/869): the section "What 3.0.0-alpha.1 gives you now" after the hero, with the measured instructions per request read from `site/src/data/perf-v3.0.0-alpha.1.txt`, the pre-release link in the status line from the git tags, and the planned parts at the start of the future use cases. A later pre-release that adds a capability or a measurement updates that section in its pull request ("Presenting v3" in AGENTS.md). For `v3.0.0-alpha.2`, [#879](https://github.com/matsumotory/ngx_mruby/pull/879) names it in the section and reads `site/src/data/perf-v3.0.0-alpha.2.txt`, the comparison of `v3.0.0-alpha.2` with `v2.7.14` |
+| The pages of the site that present v3 (the home page and its use cases) show what 3.0 gives now, from the body of `v3.0.0-alpha.1`: the measured instructions per request against 2.7.13, mruby 4.1, the defined behavior of handlers that wait, `Nginx::Request#store` and `mruby_variable`, beside the use cases and their status ("Presenting v3" in AGENTS.md) | `next` | Done in [#869](https://github.com/matsumotory/ngx_mruby/pull/869): the section "What 3.0.0-alpha.1 gives you now" after the hero, with the measured instructions per request read from `site/src/data/perf-v3.0.0-alpha.1.txt`, the pre-release link in the status line from the git tags, and the planned parts at the start of the future use cases. A later pre-release that adds a capability or a measurement updates that section in its pull request ("Presenting v3" in AGENTS.md). For `v3.0.0-alpha.2`, [#879](https://github.com/matsumotory/ngx_mruby/pull/879) named it in the section and read `site/src/data/perf-v3.0.0-alpha.2.txt`, the comparison of `v3.0.0-alpha.2` with `v2.7.14`; for `v3.0.0-alpha.3`, [#885](https://github.com/matsumotory/ngx_mruby/pull/885) reads `site/src/data/perf-v3.0.0-alpha.3.txt`, the comparison of `v3.0.0-alpha.3` with `v2.7.15`, which `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs` names |
 | The category comments of `test/ci/changes.sh` describe local site checks and next-push publication after the CI changes of 2026-11-02 (#737 and #739) | `master` and `next` | Updated on `next` with stream measurement, and on `master` in [#774](https://github.com/matsumotory/ngx_mruby/pull/774) |
 | Merge `master` into `next` after each merge into `master`. Model: #573. | `next` | Merged through `915076528` (#775) in [#777](https://github.com/matsumotory/ngx_mruby/pull/777). Merged through `13153ae22` (#778, #781, #784) in [#785](https://github.com/matsumotory/ngx_mruby/pull/785). Merged through `10c4cd927` (#786) in [#787](https://github.com/matsumotory/ngx_mruby/pull/787). Merged through `65ce972e1` (#790, #792) in [#793](https://github.com/matsumotory/ngx_mruby/pull/793), through `aa3d9798a` (v2.7.6, #801, #800) in [#802](https://github.com/matsumotory/ngx_mruby/pull/802), through `39bfae179` (#804) in [#805](https://github.com/matsumotory/ngx_mruby/pull/805), through `66b284a94` (#803) in [#806](https://github.com/matsumotory/ngx_mruby/pull/806), through `7a72306bb` (#807) in [#808](https://github.com/matsumotory/ngx_mruby/pull/808), through `91499f767` (#809, v2.7.7 and #811) in [#810](https://github.com/matsumotory/ngx_mruby/pull/810), through `976015c48` (#812, #814, #813 and v2.7.8) in [#815](https://github.com/matsumotory/ngx_mruby/pull/815), through `11f80acfa` (#817 and #816) in [#818](https://github.com/matsumotory/ngx_mruby/pull/818), which also raised `worker_connections` of `test/conf/nginx.conf` from 200 to 1024, through `8f204e061` (#819) in [#820](https://github.com/matsumotory/ngx_mruby/pull/820), through `a7800d865` (#822) in [#823](https://github.com/matsumotory/ngx_mruby/pull/823), which also set `MODULE_VERSION` of `next` to `3.0.0`, through `22ef61915` (#824, #827) in [#828](https://github.com/matsumotory/ngx_mruby/pull/828), and through `2c7e833a0` (2.7.10 and #831) in [#830](https://github.com/matsumotory/ngx_mruby/pull/830). Merged through `ea531ad88` (#843, 2.7.11 and #851) in [#850](https://github.com/matsumotory/ngx_mruby/pull/850), merged on 2026-11-17 at 18:19 JST as `4c78c56a3`, and through `14bdc5fa6` (#852, #853) in [#856](https://github.com/matsumotory/ngx_mruby/pull/856), merged on 2026-11-17 at 22:18 JST as `e8643df33`, and through `49d26b879` (2.7.12, #858) in [#859](https://github.com/matsumotory/ngx_mruby/pull/859), merged on 2026-11-18 at 03:56 JST as `2072a900b`, through `7ab993a5c` (2.7.13, #860) in [#861](https://github.com/matsumotory/ngx_mruby/pull/861), merged on 2026-11-25 at 01:07 JST as `ad77c29bf`, and through `9cd91ff26` (#865) in [#866](https://github.com/matsumotory/ngx_mruby/pull/866), merged on 2026-11-25 at 17:21 JST as `f913a5cbe`; the next merge of `master` waits for a merge into `master` |
 | Public work records summarize requirements, rationale and constraints, distinguish decisions from proposals, and omit conversation quotations. Shared rules and next documents were aligned in #746; master rules and the corresponding English/Japanese 2.7.3 entries were aligned in #748 | `master` and `next` | #746 and #748 merged; #749 brought the remaining release-note corrections to `next` |

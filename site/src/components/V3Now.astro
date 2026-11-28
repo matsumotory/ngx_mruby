@@ -12,11 +12,11 @@
 // of that report, and the build stops when its tag is not in the repository.
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { measuredMonth, readPerfReport } from '../../scripts/lib/perf-report.mjs';
+import { HOME_PERF_REPORT, measuredMonth, readPerfReport } from '../../scripts/lib/perf-report.mjs';
 import { repoDir } from '../../scripts/lib/site.mjs';
 const ja = Astro.props.lang === 'ja';
 const prefix = ja ? '/ja' : '';
-const report = readPerfReport(path.resolve(process.cwd(), 'src/data/perf-v3.0.0-alpha.2.txt'));
+const report = readPerfReport(path.resolve(process.cwd(), 'src/data', HOME_PERF_REPORT));
 const tags = execFileSync('git', ['-C', repoDir, 'tag', '--list', 'v*'], { encoding: 'utf8' }).trim().split('\n');
 for (const tag of [report.base.tag, report.head.tag]) {
   if (!tags.includes(tag)) throw new Error(`V3Now: the tag ${tag} of the perf report is not in the repository; fetch the tags before building`);
@@ -34,7 +34,6 @@ const SHOWN = [
   ['sub_request', 'サブリクエスト', 'Subrequest'],
   ['hello', 'helloを返す', 'Handler that returns hello'],
   ['filter', '出力のボディフィルター', 'Output body filter'],
-  ['file', 'ファイルに書いたハンドラ', 'Handler from a file'],
 ];
 const rows = SHOWN.map(([scenario, jaName, enName]) => {
   const row = report.rows.find((r) => r.scenario === scenario);

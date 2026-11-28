@@ -623,7 +623,7 @@ each kept apart from what is planned:
   release); the second keeps the stable documentation and the release badge
   of the newest stable tag. A reader sees in one place which release to try
   and which to run in production.
-- **"What 3.0.0-alpha.2 gives you now"** (`V3Now.astro`, the newest pre-release of 3.0) follows the hero,
+- **"What 3.0.0-alpha.3 gives you now"** (`V3Now.astro`, the newest pre-release of 3.0) follows the hero,
   before the routing example, so that the measured change and what a
   configuration or script can use come before the example of one use. It
   has three parts:
@@ -631,7 +631,7 @@ each kept apart from what is planned:
     release;
   - the measured change: a heading that gives the month and the release it
     was compared with, a table of the three largest decreases in percent of
-    the total per request and every row that rose (five rows for 3.0.0-alpha.2), and
+    the total per request and every row that rose (four rows for 3.0.0-alpha.3), and
     the method under it. Values compared side by side go into a table, and an enumeration
     into a list (Digital Agency design system, description list, updated
     2026-09-09: https://design.digital.go.jp/dads/components/description-list/).
@@ -639,11 +639,12 @@ each kept apart from what is planned:
     the monospace face (4.3, item 2; Q8). The table fits 402 px without
     scrolling (4.9): its cells drop the minimum width of the documentation
     tables, numbers do not break, and the labels of the first column wrap.
-    The rows come from `site/src/data/perf-v3.0.0-alpha.2.txt`, the report
-    of the comparison of 3.0.0-alpha.2 with 2.7.14 copied from #879 (the
+    The rows come from `site/src/data/perf-v3.0.0-alpha.3.txt`, the report
+    of the comparison of 3.0.0-alpha.3 with 2.7.15 copied from #885 (the
     newest 2.x release as the base, made as "Before a tag" in AGENTS.md
-    describes), and `check-home.mjs` compares the table with it, so no
-    number is typed by hand;
+    describes); `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs`
+    names the file for the page and its checks, and `check-home.mjs`
+    compares the table with it, so no number is typed by hand;
   - the capabilities: six items in one `ul`, each a heading, one or two
     sentences and one link whose text says where it leads, two per row from
     801 px and one column below, as the use cases are laid out. The U.S. Web

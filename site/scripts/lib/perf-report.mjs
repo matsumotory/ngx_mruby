@@ -6,6 +6,11 @@
 // (docs/proposals/site.md, Q8: performance only with its date and method).
 import fs from 'node:fs';
 
+// The report that the home pages show: the newest 2.x release against the
+// newest pre-release of 3.0, in src/data/. A new pre-release of 3.0 replaces
+// the file and this name in one pull request.
+export const HOME_PERF_REPORT = 'perf-v3.0.0-alpha.3.txt';
+
 const ROW = /^(\S+)\s+(\d+)\s+(\d+)\s+([+-]\d+\.\d+%)\s+(\d+)\s+(\d+)\s+([+-]\d+\.\d+%)\s+(\d+)\s+(\d+)\s+([+-]\d+\.\d+%)\s+\S+\s+(w\/o GC\/const|w\/o GC)\s+(\S+)$/;
 
 export function parsePerfReport(text) {
