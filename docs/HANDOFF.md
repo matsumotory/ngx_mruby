@@ -57,8 +57,10 @@
   [#814](https://github.com/matsumotory/ngx_mruby/pull/814) (05:55 JST),
   and `7f4063399`, the merge of
   [#812](https://github.com/matsumotory/ngx_mruby/pull/812) (05:20 JST),
-  all below. `next` is `e098a48e0`, the merge of
-  [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (2026-11-28 17:11 JST),
+  all below. `next` is `b50be3fb8`, the merge of
+  [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (2026-11-28 17:28 JST),
+  below; before it, `e098a48e0`, the merge of
+  [#882](https://github.com/matsumotory/ngx_mruby/pull/882) (17:11 JST),
   below; before it, `6c8e05ba6`, the fix for 3.0.0-alpha.3 (merged from
   the advisory's private fork at 16:32 JST) and the tag `v3.0.0-alpha.3`,
   below; before it, `5191c8e83`, the merge of
@@ -123,7 +125,7 @@
   and `7cbe1664a`, the merge of
   [#830](https://github.com/matsumotory/ngx_mruby/pull/830) (19:30 JST),
   which brought `master` at `2c7e833a0` into `next`. The open pull
-  request is [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (`next`),
+  request is [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (`next`),
   below. `v2.x` mirrors `master`.
   The latest pre-release is 3.0.0-alpha.3: the tag `v3.0.0-alpha.3` is
   on `6c8e05ba6`, the merge of the body filter fix from the advisory's
@@ -784,14 +786,23 @@
   GHSA-5qjv-293c-64f8 from the entry of the body filter fix in
   `docs/releases/v2.7.15.md` and `.ja.md`. It was merged on 2026-11-28 at
   16:58 JST as `bdd031850`.
-- [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (`next`, writes this entry): links the same
+- [#885](https://github.com/matsumotory/ngx_mruby/pull/885) (`next`): links the same
   advisory from the entry in `docs/releases/v3.0.0.md` and `.ja.md`,
   records 2.7.15 and 3.0.0-alpha.3 here, and moves the home pages to
   3.0.0-alpha.3: the section on the newest pre-release of 3.0 reads
   `site/src/data/perf-v3.0.0-alpha.3.txt`, the comparison of
   `v3.0.0-alpha.3` with `v2.7.15` (15 of 16 scenarios run fewer
   instructions per request; the output body filter +2.64%), which
-  `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs` names.
+  `HOME_PERF_REPORT` in `site/scripts/lib/perf-report.mjs` names. It was
+  merged on 2026-11-28 at 17:28 JST as `b50be3fb8`.
+- [#886](https://github.com/matsumotory/ngx_mruby/pull/886) (`next`, writes this entry): merges `master`
+  at `a09385e24` (the 2.7.15 fix `93b0fcfde`, #883 and #884) into
+  `next`. The fix is on `next` already from the same advisory's merge
+  (`6c8e05ba6`), and git merges the two copies of the guard and of the
+  test rows into one. `test/auto_ssl/` and the section "Testing the
+  auto-ssl mrbgem" of `docs/test/README.md` are not on `next`, so both
+  conflicts keep `next`'s side. The merged tree differs from `next` only
+  in `docs/releases/v2.7.15.md` and `.ja.md`.
 - The check before the 2.7.10 tag, recorded here because it needed no
   pull request ("Before the tag" in `docs/releases/README.md`): the
   release notes `v2.7.10.md` and `.ja.md` list under "Fixes" #827, #829
