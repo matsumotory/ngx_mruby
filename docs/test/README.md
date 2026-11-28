@@ -1379,13 +1379,26 @@ of the worker between samples ([Soak test for
 memory](#soak-test-for-memory)), is the check for such leaks.
 
 `test/valgrind.supp` suppresses only allocations of nginx itself, each with
-its stack and the reason in a comment: today the environment array of
-`ngx_set_environment()` (8 bytes, definitely lost in every cell), which
-nginx leaves allocated at exit on purpose (`ngx_cleanup_environment()` in
-`nginx.c`), and the connection and event arrays that
+its stack and the reason in a comment: today the environment that
+`ngx_set_environment()` allocates, which nginx leaves allocated at exit on
+purpose (`ngx_cleanup_environment()` and
+`ngx_cleanup_environment_variable()` in `nginx.c`), and the connection and
+event arrays that
 `ngx_event_process_init()` allocates in a worker process (the nginx of
-`test/t/cases/_workers.rb`, "Several workers and reloads" above). nginx
-never frees these arrays; a worker that ends on SIGTERM destroys the cycle
+`test/t/cases/_workers.rb`, "Several workers and reloads" above). The
+environment is an array, definitely lost in every cell (8 bytes, or 16
+bytes with nginx 1.30.6), and a copy of each entry of the form
+`NAME=value` (an `env NAME=value;` of the configuration, or a variable
+that nginx sets itself), which only the array points to. nginx 1.30.6,
+built with `--with-http_v3_module` as `test.sh` builds it, sets one such
+variable, `NGINX_BPF_MAPS`, also when `quic_bpf` is off, and valgrind
+reports its copy as indirectly lost (16 bytes) in each worker of
+`test/t/cases/_workers.rb` (the nightly runs
+[45876222175](https://github.com/matsumotory/ngx_mruby/actions/runs/45876222175)
+and
+[46049657554](https://github.com/matsumotory/ngx_mruby/actions/runs/46049657554));
+nginx 1.31.8 does not set it while `quic_bpf` is off. nginx never frees
+the connection and event arrays; a worker that ends on SIGTERM destroys the cycle
 pool that points at them and exits, and on the x86-64 runner valgrind
 reports them as definitely and indirectly lost (14,848 and 2 x 6,144
 bytes in each such worker, in the first CI run of #706), where the arm64

@@ -15,10 +15,28 @@
 # 1.31.6), with the stack
 # malloc / ngx_alloc / ngx_set_environment (nginx.c:613 in 1.31.6) /
 # ngx_single_process_cycle / main.
+# The same function copies each variable of the env array that already has
+# its value ("NAME=value") with ngx_alloc and puts the copy into the
+# environment array; ngx_cleanup_environment_variable() leaves the copy
+# allocated for the same reason. When only the lost array points to the
+# copy, valgrind reports the copy as indirectly lost. nginx 1.30.6, built
+# with --with-http_v3_module as test.sh builds it since #871, adds such a
+# variable whatever the configuration: ngx_quic_bpf_module_init() calls
+# ngx_quic_bpf_export_maps(), which pushes "NGINX_BPF_MAPS=" to the env
+# array even when quic_bpf is off. In 1.31.8, that function returns first
+# when quic_bpf is off and adds nothing. So in the nightly runs
+# 45876222175 and 46049657554, every worker of test/t/cases/_workers.rb in
+# the four cells of nginx 1.30.6 reported 16 bytes in 1 block indirectly
+# lost, with the stack malloc / ngx_alloc / ngx_set_environment (nginx.c:618
+# in 1.30.6) / ngx_worker_process_init / ngx_worker_process_cycle /
+# ngx_spawn_process / ngx_start_worker_processes / ngx_master_process_cycle
+# / main, beside its array, which this entry already suppressed. The entry
+# matches both kinds, and still only blocks that ngx_alloc allocates in
+# ngx_set_environment.
 {
    nginx-environment-at-exit
    Memcheck:Leak
-   match-leak-kinds: definite
+   match-leak-kinds: definite,indirect
    fun:malloc
    fun:ngx_alloc
    fun:ngx_set_environment
