@@ -17,8 +17,9 @@ name: nginx-tests
 # This workflow is the nightly run of the tip of next, and runs only on
 # "Run workflow" (gh workflow run nginx-tests.yml --ref next): GitHub runs
 # a schedule only from the workflow files on the default branch, master,
-# which does not have this file, so a workflow on master starts the
-# nightly run on next, as valgrind-nightly.yml on master starts the
+# which does not have this file. nginx-tests-nightly.yml on master starts
+# it on next every day at 19:23 UTC (04:23 JST), waits for the run and
+# fails when that run fails, as valgrind-nightly.yml on master starts the
 # nightly runs of test.yml.
 on:
   workflow_dispatch:

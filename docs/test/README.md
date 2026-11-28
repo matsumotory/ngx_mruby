@@ -400,8 +400,9 @@ CI](#valgrind-in-ci)). The other workflows decide on their own when they
 run: `site` deploys on every push to `next`, and `codeql` scans pushes to
 `master` and `next` that change `src/`, `mrbgems/`, the workflows or its
 configuration ([CodeQL](#codeql)); `examples` and `zizmor` run on pull
-requests only, and `nginx-tests` on "Run workflow" only ([nginx-tests in
-CI](#nginx-tests-in-ci)). After a deploy, the `verify-live` job of `site`
+requests only, and `nginx-tests` on "Run workflow" only, which
+`nginx-tests-nightly.yml` on `master` starts on `next` every night
+([nginx-tests in CI](#nginx-tests-in-ci)). After a deploy, the `verify-live` job of `site`
 reads the GitHub Pages environment and deployment through the REST API with
 the job's own `GITHUB_TOKEN` (`contents: read`), so that the requests do not
 share the anonymous limit of the runner's IP address; on a rate limit
@@ -1646,11 +1647,13 @@ of the tip of `next`. `.github/workflows/nginx-tests.yml` runs the
 self-test and `run.sh` on `ubuntu-22.04` on "Run workflow" only (`gh
 workflow run nginx-tests.yml --ref next`): GitHub runs a schedule only
 from the workflow files on the default branch, `master`, which has no
-copy of this workflow, so the nightly run is a dispatch from a workflow
-on `master`, as `valgrind-nightly.yml` on `master` dispatches the nightly
-runs of `test.yml` ([valgrind in CI](#valgrind-in-ci)). Until the
-workflow that starts the nightly run is on `master`, the runs are the
-dispatches by hand. The job summary is `summary.md`, each file that fails
+copy of this workflow, so `.github/workflows/nginx-tests-nightly.yml` on
+`master` starts it on `next` every day at 19:23 UTC (04:23 JST), waits
+for the run, and fails when that run fails, as `valgrind-nightly.yml` on
+`master` dispatches the nightly runs of `test.yml` ([valgrind in
+CI](#valgrind-in-ci)). When `nginx-tests-nightly` fails, its job summary
+links the run of `nginx-tests.yml`, which has the results. The job summary
+of `nginx-tests.yml` is `summary.md`, each file that fails
 with ngx_mruby only is an error annotation, and the artifact
 `nginx-tests` has the output above without the copy of the nginx source.
 
